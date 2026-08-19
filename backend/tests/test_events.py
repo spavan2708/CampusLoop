@@ -98,7 +98,10 @@ def test_drafts_are_private_and_published_events_are_public(client):
     assert publish_response.status_code == 200
     assert publish_response.json()["status"] == "published"
     assert client.get("/events").json()["total"] == 1
-    assert client.get(f"/events/{event_id}").status_code == 200
+    detail_response = client.get(f"/events/{event_id}")
+    assert detail_response.status_code == 200
+    assert detail_response.json()["organizer_name"] == "Owner"
+    assert detail_response.json()["registered_count"] == 0
 
 
 def test_only_owner_can_update_publish_or_cancel(client):

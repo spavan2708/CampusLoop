@@ -71,6 +71,7 @@ def test_successful_registration_and_student_registration_list(client):
     assert response.status_code == 201
     assert response.json()["event"]["id"] == event_id
     assert response.json()["event"]["status"] == "published"
+    assert response.json()["event"]["registered_count"] == 1
 
     mine_response = client.get("/registrations/me", headers=student)
     assert mine_response.status_code == 200

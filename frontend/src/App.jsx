@@ -8,7 +8,12 @@ import NotFoundPage from './pages/NotFoundPage.jsx'
 import OrganizerDashboard from './pages/OrganizerDashboard.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import StudentDashboard from './pages/StudentDashboard.jsx'
+import EventsPage from './pages/EventsPage.jsx'
+import EventDetailsPage from './pages/EventDetailsPage.jsx'
+import MyRegistrationsPage from './pages/MyRegistrationsPage.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
 import UnauthorizedPage from './pages/UnauthorizedPage.jsx'
+import StudentDataProvider from './context/StudentDataProvider.jsx'
 import './App.css'
 
 function App() {
@@ -22,8 +27,12 @@ function App() {
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-        <Route element={<DashboardLayout />}>
+        <Route element={<StudentDataProvider><DashboardLayout /></StudentDataProvider>}>
           <Route path="student" element={<StudentDashboard />} />
+          <Route path="student/events" element={<EventsPage />} />
+          <Route path="student/events/:eventId" element={<EventDetailsPage />} />
+          <Route path="student/registrations" element={<MyRegistrationsPage />} />
+          <Route path="student/profile" element={<ProfilePage />} />
         </Route>
       </Route>
 

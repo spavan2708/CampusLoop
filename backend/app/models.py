@@ -91,6 +91,14 @@ class Event(Base):
         cascade="all, delete-orphan"
     )
 
+    @property
+    def organizer_name(self) -> str:
+        return self.organizer.name
+
+    @property
+    def registered_count(self) -> int:
+        return len(self.registrations)
+
 
 class Registration(Base):
     __tablename__ = "registrations"

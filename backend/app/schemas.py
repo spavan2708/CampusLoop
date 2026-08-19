@@ -141,6 +141,8 @@ class EventResponse(BaseModel):
     capacity: int
     status: EventStatus
     organizer_id: int
+    organizer_name: str
+    registered_count: int
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
