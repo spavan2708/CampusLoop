@@ -31,7 +31,8 @@ function LoginPage() {
     try {
       const currentUser = await login(form.email, form.password)
       const intendedPath = location.state?.from?.pathname
-      const destination = intendedPath === `/${currentUser.role}` ? intendedPath : `/${currentUser.role}`
+      const roleRoot = `/${currentUser.role}`
+      const destination = intendedPath?.startsWith(roleRoot) ? intendedPath : roleRoot
       navigate(destination, { replace: true })
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, 'Unable to log in. Please try again.'))

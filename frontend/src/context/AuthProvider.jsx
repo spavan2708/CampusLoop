@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getCurrentUser, loginUser } from '../services/auth.js'
-import { TOKEN_STORAGE_KEY } from '../services/api.js'
+import { AUTH_EXPIRED_EVENT, TOKEN_STORAGE_KEY } from '../services/api.js'
 import AuthContext from './auth-context.js'
 
 function AuthProvider({ children }) {
@@ -34,6 +34,15 @@ function AuthProvider({ children }) {
     return () => {
       active = false
     }
+  }, [])
+
+  useEffect(() => {
+    function handleExpiredSession() {
+      setUser(null)
+    }
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession)
   }, [])
 
   const login = useCallback(async (email, password) => {

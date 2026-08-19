@@ -15,10 +15,22 @@ function OrganizerDataProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    // The initial request intentionally controls provider loading state.
-    // eslint-disable-next-line react/set-state-in-effect
-    refresh()
-  }, [refresh])
+    let active = true
+
+    async function loadInitialData() {
+      try {
+        const data = await getMyEvents()
+        if (active) setEvents(data.items)
+      } catch (requestError) {
+        if (active) setError(requestError)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    loadInitialData()
+    return () => { active = false }
+  }, [])
 
   const addEvent = useCallback(async (payload) => {
     const created = await createEvent(payload)

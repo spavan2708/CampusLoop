@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from .config import settings
-from .database import Base, engine
+from .database import Base, engine, get_db
 from . import models
 from .routers import auth, events, registrations
 
@@ -33,7 +35,14 @@ def root():
 
 
 @app.get("/health")
-def health_check():
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection failed",
+        ) from exc
     return {
         "status": "healthy",
         "database": "connected"

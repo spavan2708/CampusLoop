@@ -24,10 +24,25 @@ function StudentDataProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    // The initial fetch intentionally owns the provider's loading state.
-    // eslint-disable-next-line react/set-state-in-effect
-    refresh()
-  }, [refresh])
+    let active = true
+
+    async function loadInitialData() {
+      try {
+        const [eventData, registrationData] = await Promise.all([getEvents(), getMyRegistrations()])
+        if (active) {
+          setEvents(eventData.items)
+          setRegistrations(registrationData.items)
+        }
+      } catch (requestError) {
+        if (active) setError(requestError)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    loadInitialData()
+    return () => { active = false }
+  }, [])
 
   const register = useCallback(async (eventId) => {
     const registration = await registerForEvent(eventId)
