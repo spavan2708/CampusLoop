@@ -1,0 +1,7 @@
+backend/venv/
+backend/campusloop.db
+frontend/node_modules/
+__pycache__/
+*.pyc
+.env
+.DS_Store
