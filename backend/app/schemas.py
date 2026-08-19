@@ -149,3 +149,37 @@ class EventResponse(BaseModel):
 class EventList(BaseModel):
     items: list[EventResponse]
     total: int
+
+
+class RegistrationResponse(BaseModel):
+    id: int
+    student_id: int
+    registered_at: datetime
+    event: EventResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RegistrationList(BaseModel):
+    items: list[RegistrationResponse]
+    total: int
+
+
+class AttendeeStudent(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AttendeeResponse(BaseModel):
+    registration_id: int
+    registered_at: datetime
+    student: AttendeeStudent
+
+
+class AttendeeList(BaseModel):
+    event: EventResponse
+    items: list[AttendeeResponse]
+    total: int
