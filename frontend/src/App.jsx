@@ -14,6 +14,12 @@ import MyRegistrationsPage from './pages/MyRegistrationsPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import UnauthorizedPage from './pages/UnauthorizedPage.jsx'
 import StudentDataProvider from './context/StudentDataProvider.jsx'
+import OrganizerDataProvider from './context/OrganizerDataProvider.jsx'
+import ManageEventsPage from './pages/ManageEventsPage.jsx'
+import CreateEventPage from './pages/CreateEventPage.jsx'
+import EditEventPage from './pages/EditEventPage.jsx'
+import OrganizerEventDetailsPage from './pages/OrganizerEventDetailsPage.jsx'
+import AttendeesPage from './pages/AttendeesPage.jsx'
 import './App.css'
 
 function App() {
@@ -37,8 +43,14 @@ function App() {
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['organizer']} />}>
-        <Route element={<DashboardLayout />}>
+        <Route element={<OrganizerDataProvider><DashboardLayout /></OrganizerDataProvider>}>
           <Route path="organizer" element={<OrganizerDashboard />} />
+          <Route path="organizer/events" element={<ManageEventsPage />} />
+          <Route path="organizer/events/new" element={<CreateEventPage />} />
+          <Route path="organizer/events/:eventId" element={<OrganizerEventDetailsPage />} />
+          <Route path="organizer/events/:eventId/edit" element={<EditEventPage />} />
+          <Route path="organizer/events/:eventId/attendees" element={<AttendeesPage />} />
+          <Route path="organizer/profile" element={<ProfilePage />} />
         </Route>
       </Route>
 

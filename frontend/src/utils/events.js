@@ -29,3 +29,14 @@ export function getRegistrationState(event) {
   if (event.registered_count >= event.capacity) return { key: 'full', label: 'Event full' }
   return { key: 'open', label: 'Registration open' }
 }
+
+export function toLocalDateTimeInput(value) {
+  const date = parseApiDate(value)
+  if (!date || Number.isNaN(date.getTime())) return ''
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+export function toApiDateTime(value) {
+  return value ? new Date(value).toISOString() : value
+}
