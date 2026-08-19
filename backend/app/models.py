@@ -21,6 +21,12 @@ class UserRole(str, Enum):
     ORGANIZER = "organizer"
 
 
+class EventStatus(str, Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    CANCELLED = "cancelled"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -60,7 +66,13 @@ class Event(Base):
     event_date: Mapped[datetime] = mapped_column(DateTime)
     registration_deadline: Mapped[datetime] = mapped_column(DateTime)
     capacity: Mapped[int] = mapped_column(Integer)
+    # Kept for compatibility with the prototype database created in Phase 1.
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[EventStatus] = mapped_column(
+        SqlEnum(EventStatus),
+        default=EventStatus.DRAFT,
+        server_default=EventStatus.DRAFT.name,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=lambda: datetime.now(timezone.utc)
