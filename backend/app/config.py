@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     jwt_expiry_minutes: int = Field(default=60, gt=0)
     allowed_frontend_origin: str = "http://localhost:5173"
 
+    @property
+    def allowed_frontend_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.allowed_frontend_origin.split(",") if origin.strip()]
+
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env",
         env_file_encoding="utf-8",

@@ -7,12 +7,12 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --ink: #17152b;
-  --muted: #6f6b85;
-  --purple: #6546e8;
-  --purple-dark: #4f34ca;
-  --purple-soft: #eeeaff;
-  --line: #e8e5f1;
+  --ink: #10233f;
+  --muted: #637083;
+  --purple: #163d6b;
+  --purple-dark: #0d2b4e;
+  --purple-soft: #e8f0f7;
+  --line: #dce3ea;
   --surface: #ffffff;
   --shadow: 0 22px 70px rgba(49, 35, 102, 0.12);
 }

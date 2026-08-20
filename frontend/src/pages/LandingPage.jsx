@@ -1,5 +1,8 @@
-import { ArrowRight, CalendarCheck, CheckCircle2, Search, Sparkles, Users } from 'lucide-react'
+import { ArrowRight, Building2, CalendarCheck, CheckCircle2, Search, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { getEvents } from '../services/events.js'
+import { formatDateTime } from '../utils/events.js'
 
 const benefits = [
   { icon: Search, title: 'Find what moves you', text: 'Discover talks, workshops, fests, and communities across campus.' },
@@ -8,6 +11,8 @@ const benefits = [
 ]
 
 function LandingPage() {
+  const [featured, setFeatured] = useState([])
+  useEffect(() => { getEvents().then((data) => setFeatured(data.items.filter((event) => event.is_featured).concat(data.items.filter((event) => !event.is_featured)).slice(0, 2))).catch(() => setFeatured([])) }, [])
   return (
     <main>
       <section className="hero-section">
@@ -18,7 +23,7 @@ function LandingPage() {
           <h1>Every campus moment,<br /><span>all in one place.</span></h1>
           <p className="hero-lead">Discover events worth showing up for. CampusLoop connects students and organizers through one simple, vibrant campus hub.</p>
           <div className="hero-actions">
-            <Link className="button button-primary" to="/signup">Create your account <ArrowRight size={18} /></Link>
+            <Link className="button button-primary" to="/student/signup">Student signup <ArrowRight size={18} /></Link>
             <Link className="button button-secondary" to="/login">I already have an account</Link>
           </div>
           <div className="trust-row">
@@ -28,20 +33,13 @@ function LandingPage() {
         </div>
 
         <div className="hero-visual" aria-label="A preview of CampusLoop events">
-          <div className="floating-pill pill-one"><span /> Registration open</div>
+          <div className="floating-pill pill-one"><span /> Approved campus events</div>
           <div className="event-preview">
-            <div className="preview-topline"><span className="preview-label">Happening soon</span><span className="preview-count">12 events</span></div>
-            <article className="preview-event preview-purple">
-              <div className="date-tile"><strong>20</strong><span>SEP</span></div>
-              <div><span className="event-tag">Technology</span><h3>Campus Tech Fest</h3><p>Main Auditorium · 10:00 AM</p></div>
-            </article>
-            <article className="preview-event preview-orange">
-              <div className="date-tile"><strong>24</strong><span>SEP</span></div>
-              <div><span className="event-tag">Community</span><h3>Ideas After Hours</h3><p>Innovation Lab · 5:30 PM</p></div>
-            </article>
-            <div className="preview-footer"><div className="mini-avatars"><span>P</span><span>A</span><span>R</span></div><p>Join your campus community</p></div>
+            <div className="preview-topline"><span className="preview-label">Happening soon</span><span className="preview-count">Live from CampusLoop</span></div>
+            {featured.length ? featured.map((event, index) => <article className={`preview-event ${index ? 'preview-orange' : 'preview-purple'}`} key={event.id}><div className="date-tile"><strong>{new Date(event.event_date).getDate()}</strong><span>{new Date(event.event_date).toLocaleString(undefined, { month: 'short' })}</span></div><div><span className="event-tag">{event.category}</span><h3>{event.title}</h3><p>{event.venue} · {formatDateTime(event.event_date)}</p></div></article>) : <div className="landing-empty"><CalendarCheck /><p>Published events will appear here as clubs announce them.</p></div>}
+            <div className="preview-footer"><div className="mini-avatars"><span>C</span><span>L</span></div><p>One trusted campus calendar</p></div>
           </div>
-          <div className="floating-pill pill-two"><Users size={16} /> 148 students joined</div>
+          <div className="floating-pill pill-two"><Users size={16} /> Clubs, students, one loop</div>
         </div>
       </section>
 
@@ -55,6 +53,8 @@ function LandingPage() {
           ))}
         </div>
       </section>
+      <section className="workflow-section"><div className="section-heading"><span className="section-kicker">A clearer campus calendar</span><h2>From idea to full house.</h2><p>CampusLoop gives every role one focused workspace while central administration keeps the public calendar trusted.</p></div><div className="workflow-grid"><article><span>01</span><Search /><h3>Students discover</h3><p>Search approved events, save favourites, and see availability before registering.</p></article><article><span>02</span><Building2 /><h3>Clubs organize</h3><p>Create rich event pages, submit them for review, and manage attendees.</p></article><article><span>03</span><ShieldCheck /><h3>Admins moderate</h3><p>Provision club access and approve each event before it reaches students.</p></article></div></section>
+      <section className="landing-cta"><div><span className="section-kicker">Ready when you are</span><h2>Put campus life in motion.</h2><p>Students can join directly. Club access is securely issued by central administration.</p></div><div><Link className="button button-primary" to="/student/signup">Create student account <ArrowRight /></Link><Link className="button button-secondary" to="/login">Open a portal</Link></div></section>
     </main>
   )
 }

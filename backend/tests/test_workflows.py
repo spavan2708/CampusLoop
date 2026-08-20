@@ -1,104 +1,55 @@
-from datetime import datetime, timedelta, timezone
+from app.models import UserRole
+
+def test_separate_role_logins_and_public_signup(client, account_factory):
+    signup = client.post('/auth/signup', json={'name':'Student','email':'student@campus.example.com','password':'strong-password','role':'central_admin'})
+    assert signup.status_code == 201 and signup.json()['role'] == 'student'
+    assert client.post('/auth/admin/login', data={'username':'student@campus.example.com','password':'strong-password'}).status_code == 401
+    admin,_,_ = account_factory(UserRole.CENTRAL_ADMIN)
+    assert client.post('/auth/admin/login', data={'username':admin.email,'password':'strong-password'}).status_code == 200
+
+def test_central_admin_creates_active_club_login(client, account_factory):
+    payload = {'club_name':'Innovation Society','description':'A student society for campus innovation.','category':'Technology','contact_email':'innovation@example.com','faculty_coordinator':'Dr Faculty','student_coordinator':'Student Lead','admin_name':'Club Admin','admin_email':'clubadmin@example.com','password':'strong-password'}
+    assert client.post('/admin/clubs', json=payload).status_code == 401
+    _,_,admin = account_factory(UserRole.CENTRAL_ADMIN)
+    created = client.post('/admin/clubs', headers=admin, json=payload)
+    assert created.status_code == 201
+    assert created.json()['approval_status'] == 'approved'
+    assert created.json()['is_active'] is True
+    assert client.post('/auth/club/login', data={'username':'clubadmin@example.com','password':'strong-password'}).status_code == 200
+
+def test_club_admin_can_change_password(client, account_factory):
+    club_admin,_,headers = account_factory(UserRole.CLUB_ADMIN)
+    changed = client.post('/auth/change-password', headers=headers, json={'current_password':'strong-password','new_password':'new-strong-password'})
+    assert changed.status_code == 204
+    assert client.post('/auth/club/login', data={'username':club_admin.email,'password':'strong-password'}).status_code == 401
+    assert client.post('/auth/club/login', data={'username':club_admin.email,'password':'new-strong-password'}).status_code == 200
 
 
-def signup(client, name, email, role):
-    response = client.post(
-        "/auth/signup",
-        json={"name": name, "email": email, "password": "workflow-password", "role": role},
-    )
-    assert response.status_code == 201
-
-
-def login_headers(client, email):
-    response = client.post(
-        "/auth/login",
-        data={"username": email, "password": "workflow-password"},
-    )
+def test_club_admin_updates_public_profile(client, account_factory):
+    _, club, headers = account_factory(UserRole.CLUB_ADMIN)
+    response = client.patch('/clubs/me/profile', headers=headers, json={
+        'description': 'A refreshed public club description for students.',
+        'category': 'Arts and culture',
+        'contact_email': 'CLUB@EXAMPLE.COM',
+        'faculty_coordinator': 'Dr Updated',
+        'student_coordinator': 'New Student Lead',
+    })
     assert response.status_code == 200
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+    assert response.json()['description'].startswith('A refreshed')
+    assert response.json()['contact_email'] == 'club@example.com'
+    public = client.get(f'/clubs/{club.slug}')
+    assert public.status_code == 200
+    assert public.json()['category'] == 'Arts and culture'
 
 
-def test_complete_student_and_organizer_workflows(client):
-    signup(client, "Workflow Organizer", "organizer@workflow.example.com", "organizer")
-    signup(client, "Workflow Student", "student@workflow.example.com", "student")
-    organizer_headers = login_headers(client, "organizer@workflow.example.com")
-    student_headers = login_headers(client, "student@workflow.example.com")
-
-    # A saved token restores each role's session through /auth/me.
-    assert client.get("/auth/me", headers=organizer_headers).json()["role"] == "organizer"
-    assert client.get("/auth/me", headers=student_headers).json()["role"] == "student"
-
-    event_date = datetime.now(timezone.utc) + timedelta(days=14)
-    deadline = event_date - timedelta(days=2)
-    create_response = client.post(
-        "/events",
-        headers=organizer_headers,
-        json={
-            "title": "Workflow Engineering Meetup",
-            "description": "An end-to-end integration event.",
-            "category": "Technology",
-            "venue": "Innovation Hall",
-            "event_date": event_date.isoformat(),
-            "registration_deadline": deadline.isoformat(),
-            "capacity": 2,
-        },
-    )
-    assert create_response.status_code == 201
-    event_id = create_response.json()["id"]
-    assert create_response.json()["status"] == "draft"
-
-    edit_response = client.patch(
-        f"/events/{event_id}",
-        headers=organizer_headers,
-        json={"title": "Workflow Campus Meetup"},
-    )
-    assert edit_response.status_code == 200
-
-    publish_response = client.post(f"/events/{event_id}/publish", headers=organizer_headers)
-    assert publish_response.status_code == 200
-    assert publish_response.json()["status"] == "published"
-
-    list_response = client.get(
-        "/events",
-        params={
-            "title": "Campus",
-            "category": "technology",
-            "date": event_date.date().isoformat(),
-        },
-    )
-    assert list_response.status_code == 200
-    assert [item["id"] for item in list_response.json()["items"]] == [event_id]
-    assert client.get(f"/events/{event_id}").status_code == 200
-
-    registration_response = client.post(
-        f"/registrations/events/{event_id}", headers=student_headers
-    )
-    assert registration_response.status_code == 201
-    assert registration_response.json()["event"]["registered_count"] == 1
-    assert client.post(
-        f"/registrations/events/{event_id}", headers=student_headers
-    ).status_code == 409
-
-    my_registrations = client.get("/registrations/me", headers=student_headers)
-    assert my_registrations.status_code == 200
-    assert my_registrations.json()["total"] == 1
-
-    attendees = client.get(
-        f"/registrations/events/{event_id}/attendees", headers=organizer_headers
-    )
-    assert attendees.status_code == 200
-    assert attendees.json()["items"][0]["student"]["email"] == "student@workflow.example.com"
-
-    cancellation = client.delete(
-        f"/registrations/events/{event_id}", headers=student_headers
-    )
-    assert cancellation.status_code == 200
-    assert client.get("/registrations/me", headers=student_headers).json()["total"] == 0
-
-    event_cancellation = client.post(
-        f"/events/{event_id}/cancel", headers=organizer_headers
-    )
-    assert event_cancellation.status_code == 200
-    assert event_cancellation.json()["status"] == "cancelled"
-    assert client.get(f"/events/{event_id}").status_code == 404
-    assert client.get("/events", params={"title": "Workflow Campus"}).json()["total"] == 0
+def test_central_admin_can_deactivate_and_reactivate_club_login(client, account_factory):
+    club_admin, club, _ = account_factory(UserRole.CLUB_ADMIN)
+    _, _, admin_headers = account_factory(UserRole.CENTRAL_ADMIN)
+    disabled = client.patch(f'/admin/clubs/{club.id}/status', headers=admin_headers, json={'is_active': False})
+    assert disabled.status_code == 200
+    assert disabled.json()['is_active'] is False
+    # Inactive accounts deliberately use the same generic response as invalid credentials.
+    assert client.post('/auth/club/login', data={'username': club_admin.email, 'password': 'strong-password'}).status_code == 401
+    enabled = client.patch(f'/admin/clubs/{club.id}/status', headers=admin_headers, json={'is_active': True})
+    assert enabled.status_code == 200
+    assert client.post('/auth/club/login', data={'username': club_admin.email, 'password': 'strong-password'}).status_code == 200

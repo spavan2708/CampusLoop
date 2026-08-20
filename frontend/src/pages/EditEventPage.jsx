@@ -17,14 +17,14 @@ function EditEventPage() {
   const event = events.find((item) => item.id === Number(eventId))
   async function handleSubmit(payload) {
     setBusy(true); setError('')
-    try { await editEvent(event.id, payload); navigate(`/organizer/events/${event.id}`, { replace: true, state: { message: 'Event changes saved.' } }); return true }
+    try { await editEvent(event.id, payload); navigate(`/club/events/${event.id}`, { replace: true, state: { message: 'Event changes saved.' } }); return true }
     catch (requestError) { setError(getApiErrorMessage(requestError, 'Could not save event changes.')); return false }
     finally { setBusy(false) }
   }
   if (loading) return <main className="dashboard-main"><LoadingState message="Loading your event…" /></main>
-  if (!event) return <main className="dashboard-main"><EmptyState title="Event not found" message="This event does not belong to your organizer account." actionLabel="Manage events" actionTo="/organizer/events" /></main>
-  if (event.status === 'cancelled') return <main className="dashboard-main"><EmptyState title="Cancelled events cannot be edited" message="The backend permanently prevents changes to cancelled events." actionLabel="View event" actionTo={`/organizer/events/${event.id}`} /></main>
-  return <main className="dashboard-main student-page"><Link className="back-link" to={`/organizer/events/${event.id}`}><ArrowLeft /> Back to event</Link><div className="page-heading"><span className="dashboard-kicker">Edit event</span><h1>{event.title}</h1><p>Update event details while respecting its registration schedule.</p></div><StatusMessage type="error">{error}</StatusMessage><section className="form-card"><EventForm event={event} onSubmit={handleSubmit} busy={busy} submitLabel="Save changes" /></section></main>
+  if (!event) return <main className="dashboard-main"><EmptyState title="Event not found" message="This event does not belong to your organizer account." actionLabel="Manage events" actionTo="/club/events" /></main>
+  if (event.status === 'cancelled') return <main className="dashboard-main"><EmptyState title="Cancelled events cannot be edited" message="The backend permanently prevents changes to cancelled events." actionLabel="View event" actionTo={`/club/events/${event.id}`} /></main>
+  return <main className="dashboard-main student-page"><Link className="back-link" to={`/club/events/${event.id}`}><ArrowLeft /> Back to event</Link><div className="page-heading"><span className="dashboard-kicker">Edit event</span><h1>{event.title}</h1><p>Update event details while respecting its registration schedule.</p></div><StatusMessage type="error">{error}</StatusMessage><section className="form-card"><EventForm event={event} onSubmit={handleSubmit} busy={busy} submitLabel="Save changes" /></section></main>
 }
 
 export default EditEventPage

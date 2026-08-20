@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..dependencies import CurrentUser
-from ..models import User
-from ..schemas import SignupRequest, TokenResponse, UserResponse
+from ..models import User, UserRole
+from ..schemas import PasswordChangeRequest, SignupRequest, TokenResponse, UserResponse
 from ..security import create_access_token, hash_password, verify_password
 
 
@@ -37,7 +37,7 @@ def signup(payload: SignupRequest, db: Annotated[Session, Depends(get_db)]):
         name=payload.name,
         email=email,
         password_hash=hash_password(payload.password),
-        role=payload.role,
+        role=UserRole.STUDENT,
     )
     db.add(user)
     try:
@@ -73,6 +73,37 @@ def login(
     return TokenResponse(access_token=create_access_token(str(user.id)))
 
 
+def role_login(role: UserRole, form_data, db):
+    email = normalized_email(form_data.username)
+    user = db.query(User).filter(User.email == email).first()
+    if user is None or user.role != role or not user.is_active or not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect email or password", headers={"WWW-Authenticate": "Bearer"})
+    return TokenResponse(access_token=create_access_token(str(user.id)))
+
+
+@router.post("/student/login", response_model=TokenResponse)
+def student_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annotated[Session, Depends(get_db)]):
+    return role_login(UserRole.STUDENT, form_data, db)
+
+
+@router.post("/club/login", response_model=TokenResponse)
+def club_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annotated[Session, Depends(get_db)]):
+    return role_login(UserRole.CLUB_ADMIN, form_data, db)
+
+
+@router.post("/admin/login", response_model=TokenResponse)
+def admin_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: Annotated[Session, Depends(get_db)]):
+    return role_login(UserRole.CENTRAL_ADMIN, form_data, db)
+
+
 @router.get("/me", response_model=UserResponse)
 def read_current_user(current_user: CurrentUser):
     return current_user
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(payload: PasswordChangeRequest, current_user: CurrentUser, db: Annotated[Session, Depends(get_db)]):
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    current_user.password_hash = hash_password(payload.new_password)
+    db.commit()

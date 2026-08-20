@@ -4,7 +4,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import useAuth from '../context/useAuth.js'
 import { getApiErrorMessage } from '../services/errors.js'
 
-function LoginPage() {
+function LoginPage({ role = 'student' }) {
   const { user, loading: authLoading, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -13,7 +13,7 @@ function LoginPage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  if (!authLoading && user) return <Navigate to={`/${user.role}`} replace />
+  if (!authLoading && user) return <Navigate to={user.role === 'club_admin' ? '/club' : user.role === 'central_admin' ? '/admin' : '/student'} replace />
 
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
@@ -29,9 +29,9 @@ function LoginPage() {
     setSubmitting(true)
     setError('')
     try {
-      const currentUser = await login(form.email, form.password)
+      const currentUser = await login(form.email, form.password, role)
       const intendedPath = location.state?.from?.pathname
-      const roleRoot = `/${currentUser.role}`
+      const roleRoot = currentUser.role === 'club_admin' ? '/club' : currentUser.role === 'central_admin' ? '/admin' : '/student'
       const destination = intendedPath?.startsWith(roleRoot) ? intendedPath : roleRoot
       navigate(destination, { replace: true })
     } catch (requestError) {
@@ -44,7 +44,7 @@ function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <div className="auth-heading"><span className="auth-icon"><LockKeyhole size={22} /></span><h1>Welcome back</h1><p>Log in to see what’s happening around campus.</p></div>
+        <div className="auth-heading"><span className="auth-icon"><LockKeyhole size={22} /></span><h1>{role === 'club_admin' ? 'Club portal' : role === 'central_admin' ? 'Central administration' : 'Student portal'}</h1><p>Secure access to your CampusLoop workspace.</p></div>
         {location.state?.accountCreated && <div className="success-banner">Account created. You can log in now.</div>}
         {error && <div className="error-banner" role="alert">{error}</div>}
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
@@ -54,7 +54,7 @@ function LoginPage() {
           <div className="input-wrap"><LockKeyhole size={18} aria-hidden="true" /><input id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={form.password} onChange={updateField} disabled={submitting} /><button className="password-toggle" type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
           <button className="button button-primary button-full" type="submit" disabled={submitting}>{submitting ? <><span className="button-spinner" /> Logging in…</> : <>Log in <ArrowRight size={18} /></>}</button>
         </form>
-        <p className="auth-switch">New to CampusLoop? <Link to="/signup">Create an account</Link></p>
+        {role === 'student' && <p className="auth-switch">New to CampusLoop? <Link to="/student/signup">Create an account</Link></p>}
       </section>
     </main>
   )

@@ -1,10 +1,10 @@
 import api from './api.js'
 
-export async function getEvents(filters = {}) {
+export async function getEvents(filters = {}, signal) {
   const params = Object.fromEntries(
     Object.entries(filters).filter(([, value]) => value !== '' && value != null),
   )
-  const response = await api.get('/events', { params })
+  const response = await api.get('/events', { params, signal })
   return response.data
 }
 
@@ -30,11 +30,23 @@ export async function updateEvent(eventId, payload) {
 }
 
 export async function publishEvent(eventId) {
-  const response = await api.post(`/events/${eventId}/publish`)
+  const response = await api.post(`/events/${eventId}/submit`)
   return response.data
 }
 
 export async function cancelEvent(eventId) {
   const response = await api.post(`/events/${eventId}/cancel`)
   return response.data
+}
+
+export async function uploadEventPoster(eventId, file) {
+  const body = new FormData()
+  body.append('image', file)
+  return (await api.post(`/events/${eventId}/poster`, body)).data
+}
+
+export async function uploadEventBanner(eventId, file) {
+  const body = new FormData()
+  body.append('image', file)
+  return (await api.post(`/events/${eventId}/banner`, body)).data
 }

@@ -19,12 +19,13 @@ function EventsPage() {
 
   useEffect(() => {
     let active = true
-    getEvents(query).then((data) => {
+    const controller = new AbortController()
+    getEvents(query, controller.signal).then((data) => {
       if (!active) return
       setEvents(data.items)
       if (!query.title && !query.category && !query.date) setAllCategories([...new Set(data.items.map((event) => event.category))].sort())
-    }).catch((requestError) => { if (active) setError(requestError) }).finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
+    }).catch((requestError) => { if (active && requestError.code !== 'ERR_CANCELED') setError(requestError) }).finally(() => { if (active) setLoading(false) })
+    return () => { active = false; controller.abort() }
   }, [query])
 
   const categories = useMemo(() => allCategories.length ? allCategories : [...new Set(events.map((event) => event.category))].sort(), [allCategories, events])

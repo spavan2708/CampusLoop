@@ -1,7 +1,27 @@
-backend/venv/
-backend/campusloop.db
-frontend/node_modules/
-__pycache__/
-*.pyc
+# Environment and secrets
 .env
+.env.*
+!.env.example
+
+# Python
+**/venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+
+# Databases and backups
+backend/*.db
+backend/*.db.*
+backend/*.bak
+*.bak
+
+# Uploaded media
+backend/uploads/
+
+# Node/Vite
+**/node_modules/
+**/dist/
+
+# System/editor
 .DS_Store
+.vscode/

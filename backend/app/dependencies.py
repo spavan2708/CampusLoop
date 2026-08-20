@@ -49,14 +49,25 @@ def require_student(current_user: CurrentUser) -> User:
     return current_user
 
 
-def require_organizer(current_user: CurrentUser) -> User:
-    if current_user.role != UserRole.ORGANIZER:
+def require_club_admin(current_user: CurrentUser) -> User:
+    if current_user.role != UserRole.CLUB_ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Organizer access required",
+            detail="Club administrator access required",
         )
     return current_user
 
 
 StudentUser = Annotated[User, Depends(require_student)]
-OrganizerUser = Annotated[User, Depends(require_organizer)]
+ClubAdminUser = Annotated[User, Depends(require_club_admin)]
+require_organizer = require_club_admin
+OrganizerUser = ClubAdminUser
+
+
+def require_central_admin(current_user: CurrentUser) -> User:
+    if current_user.role != UserRole.CENTRAL_ADMIN:
+        raise HTTPException(status_code=403, detail="Central administrator access required")
+    return current_user
+
+
+CentralAdminUser = Annotated[User, Depends(require_central_admin)]

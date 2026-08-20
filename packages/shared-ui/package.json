@@ -1,0 +1,8 @@
+{
+  "name": "@campusloop/shared-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.jsx",
+  "peerDependencies": { "react": "^19.2.8" }
+}

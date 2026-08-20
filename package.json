@@ -1,0 +1,18 @@
+{
+  "name": "campusloop-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:student": "npm run dev --workspace @campusloop/student-portal",
+    "dev:club": "npm run dev --workspace @campusloop/club-portal",
+    "dev:admin": "npm run dev --workspace @campusloop/admin-portal",
+    "dev:backend": "backend/venv/bin/uvicorn app.main:app --reload --app-dir backend",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  }
+}

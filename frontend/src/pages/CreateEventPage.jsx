@@ -12,7 +12,7 @@ function CreateEventPage() {
   const [error, setError] = useState('')
   async function handleSubmit(payload) {
     setBusy(true); setError('')
-    try { const event = await addEvent(payload); navigate(`/organizer/events/${event.id}`, { replace: true, state: { message: 'Event created and saved as a draft.' } }); return true }
+    try { const event = await addEvent(payload); navigate(`/club/events/${event.id}`, { replace: true, state: { message: 'Event created and saved as a draft.' } }); return true }
     catch (requestError) { setError(getApiErrorMessage(requestError, 'Could not create the event.')); return false }
     finally { setBusy(false) }
   }

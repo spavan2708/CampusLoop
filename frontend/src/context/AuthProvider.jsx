@@ -6,11 +6,15 @@ import AuthContext from './auth-context.js'
 function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [sessionNotice, setSessionNotice] = useState('')
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_STORAGE_KEY)
     setUser(null)
+    setSessionNotice('')
   }, [])
+
+  const clearSessionNotice = useCallback(() => setSessionNotice(''), [])
 
   useEffect(() => {
     let active = true
@@ -39,14 +43,16 @@ function AuthProvider({ children }) {
   useEffect(() => {
     function handleExpiredSession() {
       setUser(null)
+      setSessionNotice('Your session expired. Please sign in again to continue.')
     }
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession)
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession)
   }, [])
 
-  const login = useCallback(async (email, password) => {
-    const token = await loginUser(email, password)
+  const login = useCallback(async (email, password, role) => {
+    setSessionNotice('')
+    const token = await loginUser(email, password, role)
     localStorage.setItem(TOKEN_STORAGE_KEY, token)
     try {
       const currentUser = await getCurrentUser()
@@ -59,8 +65,8 @@ function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, logout }),
-    [user, loading, login, logout],
+    () => ({ user, loading, login, logout, sessionNotice, clearSessionNotice }),
+    [user, loading, login, logout, sessionNotice, clearSessionNotice],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

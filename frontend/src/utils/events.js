@@ -26,7 +26,7 @@ export function isPast(value) {
 export function getRegistrationState(event) {
   if (event.status !== 'published') return { key: 'closed', label: 'Closed' }
   if (isPast(event.registration_deadline)) return { key: 'closed', label: 'Registration closed' }
-  if (event.registered_count >= event.capacity) return { key: 'full', label: 'Event full' }
+  if (event.registered_count >= event.capacity) return { key: 'full', label: 'Waitlist available' }
   return { key: 'open', label: 'Registration open' }
 }
 

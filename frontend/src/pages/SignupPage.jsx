@@ -1,11 +1,11 @@
-import { ArrowRight, BriefcaseBusiness, GraduationCap, UserRoundPlus } from 'lucide-react'
+import { ArrowRight, UserRoundPlus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import useAuth from '../context/useAuth.js'
 import { signupUser } from '../services/auth.js'
 import { getApiErrorMessage } from '../services/errors.js'
 
-const initialForm = { name: '', email: '', password: '', confirmPassword: '', role: 'student' }
+const initialForm = { name: '', email: '', password: '', confirmPassword: '' }
 
 function SignupPage() {
   const { user, loading: authLoading } = useAuth()
@@ -14,7 +14,7 @@ function SignupPage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  if (!authLoading && user) return <Navigate to={`/${user.role}`} replace />
+  if (!authLoading && user) return <Navigate to={user.role === 'club_admin' ? '/club' : user.role === 'central_admin' ? '/admin' : '/student'} replace />
 
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
@@ -39,8 +39,8 @@ function SignupPage() {
     setSubmitting(true)
     setError('')
     try {
-      await signupUser({ name: form.name, email: form.email, password: form.password, role: form.role })
-      navigate('/login', { replace: true, state: { accountCreated: true } })
+      await signupUser({ name: form.name, email: form.email, password: form.password })
+      navigate('/student/login', { replace: true, state: { accountCreated: true } })
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, 'Unable to create your account.'))
     } finally {
@@ -54,10 +54,6 @@ function SignupPage() {
         <div className="auth-heading"><span className="auth-icon"><UserRoundPlus size={22} /></span><h1>Join CampusLoop</h1><p>One account for everything happening on campus.</p></div>
         {error && <div className="error-banner" role="alert">{error}</div>}
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          <fieldset className="role-fieldset"><legend>I’m joining as</legend><div className="role-grid">
-            <label className={`role-option ${form.role === 'student' ? 'selected' : ''}`}><input type="radio" name="role" value="student" checked={form.role === 'student'} onChange={updateField} /><span className="role-icon"><GraduationCap size={21} /></span><span><strong>Student</strong><small>Discover and join events</small></span></label>
-            <label className={`role-option ${form.role === 'organizer' ? 'selected' : ''}`}><input type="radio" name="role" value="organizer" checked={form.role === 'organizer'} onChange={updateField} /><span className="role-icon"><BriefcaseBusiness size={20} /></span><span><strong>Organizer</strong><small>Create campus experiences</small></span></label>
-          </div></fieldset>
           <div className="form-grid">
             <div className="form-group"><label htmlFor="name">Full name</label><input id="name" name="name" autoComplete="name" placeholder="Your full name" value={form.name} onChange={updateField} disabled={submitting} /></div>
             <div className="form-group"><label htmlFor="email">Email address</label><input id="email" name="email" type="email" autoComplete="email" placeholder="you@college.edu" value={form.email} onChange={updateField} disabled={submitting} /></div>
@@ -66,7 +62,7 @@ function SignupPage() {
           </div>
           <button className="button button-primary button-full" type="submit" disabled={submitting}>{submitting ? <><span className="button-spinner" /> Creating account…</> : <>Create account <ArrowRight size={18} /></>}</button>
         </form>
-        <p className="auth-switch">Already have an account? <Link to="/login">Log in</Link></p>
+        <p className="auth-switch">Already have an account? <Link to="/student/login">Student login</Link></p>
       </section>
     </main>
   )
