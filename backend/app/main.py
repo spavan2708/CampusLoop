@@ -10,7 +10,10 @@ from . import models
 from .routers import admin, auth, clubs, events, notifications, registrations
 from .storage import UPLOAD_DIR
 
-Base.metadata.create_all(bind=engine)
+# Alembic owns production schema changes. Automatic table creation remains a
+# local SQLite convenience for this learning project and never runs in production.
+if settings.is_development and settings.is_sqlite:
+    Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="CampusLoop API",

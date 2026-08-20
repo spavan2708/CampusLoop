@@ -1,204 +1,177 @@
 # CampusLoop
 
-CampusLoop is a full-stack college event-management platform for students, approved clubs, and central campus administrators. It provides one moderated campus calendar while keeping event ownership and registration rules enforced by the API.
+CampusLoop is a full-stack college event platform for students, approved clubs, and a central campus administrator. The FastAPI API owns authentication, moderation, event ownership, registrations, waitlists, saved events, and notifications. The repository also contains separate Vite entry points for the Student, Club, and Admin portals.
 
 ## Features
 
-### Students
+- Student signup, JWT login, session restoration, event discovery, saved events, registrations, cancellation, and notifications
+- Centrally provisioned club accounts, club profiles, draft event creation, moderation, publishing, attendee views, and password changes
+- A single bootstrapped central-admin account for club provisioning and event review
+- Backend-enforced roles, event ownership, deadlines, capacity, duplicate-registration prevention, and CORS
+- Argon2 password hashing, JWT authentication, health checks, and structured notification workflows
 
-- Create an account, log in, log out, and restore an authenticated session
-- Browse published events and filter by title, category, and date
-- View event details, availability, and registration deadlines
-- Register for events and cancel registrations
-- Join a waitlist when capacity is reached and save events for later
-- Browse the directory of approved campus clubs after signing in
-- View upcoming and previous registrations
+## Technology
 
-### Club administrators
+- API: FastAPI, SQLAlchemy 2, Pydantic, Alembic, Uvicorn
+- Databases: SQLite for local development; PostgreSQL with psycopg 3 for production
+- Web: React, Vite, Axios, shared npm workspaces
+- Hosting target: Render for the API; three separate Vercel projects for the portals
 
-- Sign in with an account provisioned by the central administrator
-- Change the temporary password after signing in
-- Create and edit draft events
-- Submit events for central review, respond to requested changes, and cancel owned events
-- Upload event posters and club branding through validated local media storage
-- View event status, capacity, and registration totals
-- View attendee names, email addresses, and registration times
-
-### Central administrators
-
-- Create and manage approved club accounts and their initial login credentials
-- Approve, reject, request changes, publish, cancel, and feature campus events
-- Keep a moderation audit history without exposing public club or administrator signup routes
-- Use one centrally bootstrapped administrator account for the installation
-
-### Platform safeguards
-
-- Argon2 password hashing and JWT authentication
-- Backend-enforced student and organizer permissions
-- Organizer ownership checks for event management and attendee access
-- Registration deadline, capacity, and duplicate-registration enforcement
-- Integer-paise event fees with payment-state placeholders (no live gateway)
-- SQLite foreign-key enforcement
-- Environment-backed database, authentication, API, and CORS configuration
-- Structured, role-aware in-app notifications with unread counts and user preferences
-- Deduplicated reminders, quiet hours, expiration, safe deep links, and cron-friendly jobs
-
-## Technology stack
-
-- Frontend: React, Vite, React Router, Axios, Lucide React
-- Backend: FastAPI, SQLAlchemy, Pydantic
-- Database: SQLite
-- Authentication: pwdlib with Argon2 and PyJWT
-- Testing and validation: pytest, Oxlint, Vite production build
-
-## Folder structure
+## Repository layout
 
 ```text
 CampusLoop/
+├── apps/
+│   ├── student-portal/       # @campusloop/student-portal
+│   ├── club-portal/          # @campusloop/club-portal
+│   └── admin-portal/         # @campusloop/admin-portal
+├── packages/                 # Shared API, UI, types, and utilities
 ├── backend/
-│   ├── app/
-│   │   ├── routers/       # Auth, clubs, events, registrations, moderation, notifications
-│   │   ├── jobs/          # Bounded notification generation and delivery commands
-│   │   ├── config.py      # Environment-backed settings
-│   │   ├── database.py    # SQLAlchemy engine and sessions
-│   │   ├── models.py      # Database models and relationships
-│   │   ├── schemas.py     # API request and response schemas
-│   │   └── main.py        # FastAPI application
-│   ├── migrate_redesign.py # Data-preserving prototype schema migration
-│   ├── migrate_notifications.py # Additive notification-table migration
-│   ├── create_admin.py    # Interactive central-admin bootstrap command
-│   └── tests/             # Backend and role workflow tests
-├── frontend/
-│   ├── public/            # Static browser assets
-│   └── src/
-│       ├── components/    # Reusable UI components
-│       ├── context/       # Authentication and dashboard state
-│       ├── layouts/       # Public and authenticated layouts
-│       ├── pages/         # Student, organizer, and public pages
-│       ├── services/      # Centralized API calls
-│       └── utils/         # Event and date helpers
-└── README.md
+│   ├── alembic/              # Production schema migrations
+│   ├── app/                  # FastAPI application
+│   ├── tests/                # Backend test suite
+│   ├── alembic.ini
+│   └── requirements.txt
+├── frontend/                 # Existing integrated development UI
+├── render.yaml
+└── package.json              # npm workspace commands
 ```
 
-## Environment setup
+## Local development
 
 Requirements: Python 3.11 or newer, Node.js 20 or newer, and npm.
 
-Create the backend environment file:
+### Backend
 
 ```bash
 cd backend
-cp .env.example .env
-openssl rand -hex 32
-```
-
-Place the generated value in `JWT_SECRET` inside `backend/.env`. Never commit that file. The default database location is `backend/campusloop.db`; leave `DATABASE_URL` unset unless an override is needed.
-
-Create the frontend environment file:
-
-```bash
-cd frontend
-cp .env.example .env
-```
-
-For local development, the expected values are:
-
-```dotenv
-# backend/.env
-JWT_SECRET=your-private-random-value
-JWT_EXPIRY_MINUTES=60
-ALLOWED_FRONTEND_ORIGIN=http://localhost:5173,http://localhost:5174,http://localhost:5175
-
-# frontend/.env
-VITE_API_URL=http://127.0.0.1:8000
-```
-
-## Start the backend
-
-Run these commands from `backend/`:
-
-```bash
 python3 -m venv venv
 source venv/bin/activate
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
+cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-The API runs at `http://127.0.0.1:8000`.
+Generate a private local `JWT_SECRET` with `openssl rand -hex 32` and put it in `backend/.env`. With `ENVIRONMENT=development` and no `DATABASE_URL`, the API uses `backend/campusloop.db`. Local SQLite tables may be created automatically; production never uses `create_all()`.
 
-For an existing pre-redesign development database, stop the API and run the data-preserving migration once. It creates a timestamped backup before changing the schema:
+The API is available at `http://127.0.0.1:8000`, Swagger documentation at `http://127.0.0.1:8000/docs`, and the database-aware health check at `http://127.0.0.1:8000/health`.
 
-```bash
-python migrate_redesign.py
-python migrate_notifications.py
-```
+### Portals
 
-Create the first central administrator interactively (the password is hidden and is never printed):
-
-```bash
-python create_admin.py --name "Campus Admin" --email admin@example.edu
-```
-
-## Start the frontend
-
-In a second terminal, run these commands from `frontend/`:
+Install workspace dependencies once from the repository root:
 
 ```bash
 npm install
-npm run dev
 ```
 
-Open `http://localhost:5173`.
-
-## Test and validate
-
-Backend tests, from `backend/`:
+Copy the appropriate `.env.example` to `.env` inside each portal and use `VITE_API_URL=http://127.0.0.1:8000` locally. Start a portal with:
 
 ```bash
+npm run dev:student
+npm run dev:club
+npm run dev:admin
+```
+
+The local ports are 5173, 5174, and 5175 respectively. Each portal reads its own `VITE_API_URL`; tokens and credentials do not belong in Vite environment variables.
+
+## Database migrations
+
+Alembic is the production schema authority. The initial revision is `7a44e2a477d5_initial_schema.py`. It represents the complete current schema, including users, clubs, events, reviews, registrations, saved events, notification tables, enum types, indexes, foreign keys, and unique constraints.
+
+Apply migrations from `backend/`:
+
+```bash
+alembic upgrade head
+```
+
+The Alembic environment reads `DATABASE_URL` through `app.config.Settings`, including normalization of provider URLs beginning with `postgres://`. Do not run the initial migration against the existing prototype SQLite database: it already contains application tables. The migration is intended for a new managed PostgreSQL database. Existing local SQLite data and the historical data-preserving scripts remain untouched.
+
+## Production environment
+
+### Render variables
+
+Set these on the backend service:
+
+```dotenv
+ENVIRONMENT=production
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+JWT_SECRET=GENERATE_A_LONG_RANDOM_SECRET
+JWT_EXPIRY_MINUTES=60
+ALLOWED_FRONTEND_ORIGIN=https://student.example.edu,https://clubs.example.edu,https://admin.example.edu
+```
+
+Production startup fails if `DATABASE_URL` is missing, points to SQLite, or if `JWT_SECRET` is missing or uses a known development placeholder. Comma-separated CORS entries must be exact origins; wildcard origins are rejected because authenticated requests use credentials.
+
+### Render service configuration
+
+The checked-in `render.yaml` contains placeholders only. Its effective configuration is:
+
+- Runtime: Python
+- Root directory: `backend`
+- Build command: `pip install -r requirements.txt`
+- Pre-deploy command: `alembic upgrade head`
+- Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- Health check path: `/health`
+- Auto-deploy: disabled by default in the blueprint
+
+### Vercel configuration
+
+Create three separate Vercel projects from the same repository. Set each project Root Directory to its app directory and enable Vercel's option to include source files outside that directory so npm can resolve the shared workspace packages. Use `cd ../.. && npm install` as the Install Command, `dist` as the Output Directory, and these Build Commands:
+
+| Project | Build command | Output directory |
+| --- | --- | --- |
+| Student Portal (`apps/student-portal`) | `cd ../.. && npm run build --workspace @campusloop/student-portal` | `dist` |
+| Club Portal (`apps/club-portal`) | `cd ../.. && npm run build --workspace @campusloop/club-portal` | `dist` |
+| Admin Portal (`apps/admin-portal`) | `cd ../.. && npm run build --workspace @campusloop/admin-portal` | `dist` |
+
+Set this independently in all three projects:
+
+```dotenv
+VITE_API_URL=https://your-campusloop-api.onrender.com
+```
+
+Each app-local `vercel.json` rewrites `/(.*)` to `/index.html`, so React Router routes survive direct navigation and refreshes.
+
+## Deployment order
+
+1. Create an empty managed PostgreSQL database.
+2. Create the Render backend service and configure the five required variables above.
+3. Deploy the backend; allow the pre-deploy command to run `alembic upgrade head`.
+4. Verify `https://YOUR_BACKEND/health` reports a healthy database connection.
+5. Deploy the Student Portal with its own `VITE_API_URL`.
+6. Deploy the Club Portal with its own `VITE_API_URL`.
+7. Deploy the Admin Portal with its own `VITE_API_URL`.
+8. Put all three final Vercel origins, comma-separated, in backend `ALLOWED_FRONTEND_ORIGIN`.
+9. Redeploy the backend and test login, role isolation, moderation, registration, and logout in every portal.
+
+## Uploaded media limitation
+
+Local development stores validated image uploads in `backend/uploads`. A normal Render service filesystem is ephemeral, so these files must **not** be considered durable in production and may disappear during deploys, restarts, or instance replacement. `StorageService` provides an interface for a later Cloudinary or S3 implementation, but no external provider or credentials are configured. Before production users rely on posters or club branding, implement durable object storage and return stable public URLs.
+
+## Validation commands
+
+```bash
+# Backend
+cd backend
 source venv/bin/activate
 pytest -q
-```
+alembic upgrade head
 
-Frontend validation, from `frontend/`:
-
-```bash
+# All npm workspaces
+cd ..
 npm run lint
 npm run build
+
+# Individual portal builds
+npm run build --workspace @campusloop/student-portal
+npm run build --workspace @campusloop/club-portal
+npm run build --workspace @campusloop/admin-portal
 ```
 
-## API documentation
+## Security notes
 
-With the backend running, interactive Swagger documentation is available at `http://127.0.0.1:8000/docs`.
-
-The health endpoint is available at `http://127.0.0.1:8000/health` and performs a database query before reporting a healthy state.
-
-## Notifications and reminders
-
-Notifications are stored per user and cannot be fetched or changed by another account. Business actions create structured notification records and a transactional outbox audit record in the same database transaction. Deterministic keys prevent duplicate registration, waitlist, moderation, milestone, and scheduled-window notifications. Action links are limited to internal student, club, and admin portal paths.
-
-The initial delivery channel is in-app only. Email and push use disabled service interfaces; they send nothing and require a future configured provider and explicit consent. Paid-event notices state that online payment is unavailable and payment reminder generation remains disabled.
-
-The notification lifecycle is `scheduled` → `delivered` → `read`; jobs may instead mark obsolete records `cancelled`, `expired`, or `failed`. Essential cancellation and registration-status notifications cannot be suppressed. Other categories, digest frequency, timezone, and quiet hours are configurable from each portal’s notification preferences page.
-
-Run each bounded job manually or from cron/background infrastructure. None starts an endless process:
-
-```bash
-cd backend
-python -m app.jobs.generate_notifications
-python -m app.jobs.deliver_notifications
-python -m app.jobs.expire_notifications
-python -m app.jobs.process_outbox
-```
-
-Generation rechecks event publication, deadlines, saved/registration state, cancellation, capacity, and deduplication windows. Delivery rechecks expiration and cancellation. Recommended production operation is one generator schedule plus one delivery worker schedule; SQLite is suitable for this learning prototype, while a production multi-worker deployment should use a database with row-level locking.
-
-Important history is retained. Dismissing a notification archives it only for its owner. Messages and response schemas exclude password hashes, tokens, provider credentials, and attendee lists.
-
-## Development notes
-
-- Run the backend and frontend in separate terminals.
-- Local `.env` files, SQLite databases, virtual environments, dependencies, build output, and caches are ignored by Git.
-- Club-event publication is a two-step central workflow: approve, then publish.
-- Paid-event records and UI states are present, but online payments are intentionally disabled until a real gateway is configured.
-- This learning prototype uses a data-preserving migration script and does not yet use Alembic.
-- CampusLoop has not been deployed; production hosting and production secret management remain future work.
+- Never commit `.env` files, SQLite databases, database backups, uploads, or build output.
+- The API never returns password hashes or the JWT signing secret.
+- Club ownership and student-only registration restrictions are enforced by the backend, not frontend visibility alone.
+- Bootstrap the single central administrator with `backend/create_admin.py`; there is no public admin signup flow.
+- CampusLoop is prepared for these hosting targets but does not deploy or create cloud resources automatically.

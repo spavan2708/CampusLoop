@@ -1,12 +1,21 @@
 from pathlib import Path
 from secrets import token_urlsafe
+from typing import Protocol
 
 UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
 ALLOWED_IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 
+class StorageService(Protocol):
+    """Interface for local development and future durable object storage."""
+
+    def save_image(self, content: bytes, content_type: str) -> str: ...
+
+
 class LocalStorageService:
+    """Development storage; Render's normal filesystem is not durable."""
+
     def save_image(self, content: bytes, content_type: str) -> str:
         if content_type not in ALLOWED_IMAGE_TYPES:
             raise ValueError("Only JPEG, PNG, and WebP images are accepted")
@@ -18,4 +27,4 @@ class LocalStorageService:
         return f"/uploads/{filename}"
 
 
-storage = LocalStorageService()
+storage: StorageService = LocalStorageService()

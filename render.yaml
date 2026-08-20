@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: campusloop-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRY_MINUTES
+        value: 60
+      - key: ALLOWED_FRONTEND_ORIGIN
+        sync: false
