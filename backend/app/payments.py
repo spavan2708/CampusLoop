@@ -26,4 +26,17 @@ class DisabledPaymentService:
         return False
 
 
-payment_service: PaymentService = DisabledPaymentService()
+def get_payment_service() -> PaymentService:
+    """Return the configured payment service instance based on PAYMENT_PROVIDER setting."""
+    from .config import get_settings as _get_settings
+    provider = _get_settings().payment_provider
+    if provider == "disabled":
+        return DisabledPaymentService()
+    if provider == "razorpay":
+        raise NotImplementedError("Razorpay payment service is not implemented yet. "
+                                  "Set PAYMENT_PROVIDER=disabled until the integration is complete.")
+    # Invalid provider values are already rejected by Settings validation
+    return DisabledPaymentService()
+
+
+payment_service: PaymentService = get_payment_service()

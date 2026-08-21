@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.config import DEFAULT_DATABASE_URL, Settings
+from app.payments import get_payment_service, DisabledPaymentService
 
 
 PRODUCTION_SECRET = "production-test-secret-that-is-long-and-random-enough"
@@ -110,3 +111,62 @@ def test_development_does_not_require_cloudinary_credentials():
     assert settings.environment == "development"
     assert settings.is_sqlite is True
     assert settings.cloudinary_configured is False
+
+
+def test_payment_provider_default_is_disabled():
+    """Default PAYMENT_PROVIDER is 'disabled'."""
+    settings = Settings(_env_file=None)
+    assert settings.payment_provider == "disabled"
+
+
+def test_payment_provider_whitespace_normalization():
+    """Whitespace around PAYMENT_PROVIDER is stripped and lowercased."""
+    settings = Settings(_env_file=None, payment_provider=" RAZORPAY ")
+    assert settings.payment_provider == "razorpay"
+
+
+def test_payment_provider_invalid_is_rejected():
+    """Invalid PAYMENT_PROVIDER value raises ValidationError."""
+    with pytest.raises(ValidationError, match="PAYMENT_PROVIDER must be one of"):
+        Settings(_env_file=None, payment_provider="stripe")
+
+
+def test_get_payment_service_returns_disabled_payment_service():
+    """get_payment_service() returns DisabledPaymentService when provider is disabled."""
+    svc = get_payment_service()
+    assert isinstance(svc, DisabledPaymentService)
+
+
+def test_razorpay_not_implemented_raises_error():
+    """Requesting Razorpay before implementation raises NotImplementedError."""
+    import os
+    old = os.environ.get("PAYMENT_PROVIDER")
+    os.environ["PAYMENT_PROVIDER"] = "razorpay"
+    try:
+        # Clear cache and import fresh
+        from app.config import get_settings as _get_settings
+        _get_settings.cache_clear()
+        from app.payments import get_payment_service as _get_payment_service
+        _get_payment_service()
+        assert False, "Should have raised NotImplementedError"
+    except NotImplementedError:
+        pass
+    finally:
+        if old is None:
+            os.environ.pop("PAYMENT_PROVIDER", None)
+        else:
+            os.environ["PAYMENT_PROVIDER"] = old
+
+
+def test_development_does_not_require_payment_credentials():
+    """Development Settings does not require payment provider configuration."""
+    settings = Settings(
+        _env_file=None,
+        environment="development",
+        database_url="sqlite:////Users/pavans/CampusLoop/backend/campusloop.db",
+        jwt_secret="development-only-placeholder",
+        allowed_frontend_origin="http://localhost:5173",
+    )
+    assert settings.environment == "development"
+    assert settings.is_sqlite is True
+    assert settings.payment_configured is False

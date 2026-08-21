@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     cloudinary_cloud_name: str | None = None
     cloudinary_api_key: str | None = None
     cloudinary_api_secret: SecretStr | None = None
+    payment_provider: str = "disabled"
+
+    @field_validator("payment_provider", mode="before")
+    @classmethod
+    def normalize_payment_provider(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        return value.strip().lower()
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -56,6 +64,8 @@ class Settings(BaseSettings):
                 raise ValueError("A non-development JWT_SECRET is required in production")
             if not self.cloudinary_cloud_name or not self.cloudinary_api_key or not self.cloudinary_api_secret:
                 raise ValueError("Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) are required in production")
+        if self.payment_provider not in {"disabled", "razorpay"}:
+            raise ValueError("PAYMENT_PROVIDER must be one of: disabled, razorpay")
         return self
 
     @property
@@ -77,6 +87,10 @@ class Settings(BaseSettings):
             self.cloudinary_api_key,
             self.cloudinary_api_secret,
         ])
+
+    @property
+    def payment_configured(self) -> bool:
+        return self.payment_provider != "disabled"
 
     @property
     def allowed_frontend_origins(self) -> list[str]:
