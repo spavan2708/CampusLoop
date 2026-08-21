@@ -205,18 +205,22 @@ def cancel_event(
 @router.post("/{event_id}/poster", response_model=EventResponse)
 async def upload_poster(event_id: int, organizer: ClubAdminUser, db: DatabaseSession, image: UploadFile = File(...)):
     event = get_owned_event(db, event_id, organizer.id)
+    storage.set_upload_context("event", event.id)
     try: event.poster_url = storage.save_image(await image.read(), image.content_type or "")
     except ValueError as exc: raise HTTPException(status_code=422, detail=str(exc)) from exc
+    storage.clear_upload_context()
     db.commit(); db.refresh(event); return event
 
 
 @router.post("/{event_id}/banner", response_model=EventResponse)
 async def upload_banner(event_id: int, organizer: ClubAdminUser, db: DatabaseSession, image: UploadFile = File(...)):
     event = get_owned_event(db, event_id, organizer.id)
+    storage.set_upload_context("event", event.id)
     try:
         event.banner_url = storage.save_image(await image.read(), image.content_type or "")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    storage.clear_upload_context()
     db.commit()
     db.refresh(event)
     return event
