@@ -53,3 +53,27 @@ def test_central_admin_can_deactivate_and_reactivate_club_login(client, account_
     enabled = client.patch(f'/admin/clubs/{club.id}/status', headers=admin_headers, json={'is_active': True})
     assert enabled.status_code == 200
     assert client.post('/auth/club/login', data={'username': club_admin.email, 'password': 'strong-password'}).status_code == 200
+
+
+def test_admin_detail_and_user_reads_are_admin_only(client, account_factory, event_factory):
+    student, _, student_headers = account_factory(UserRole.STUDENT)
+    club_admin, club, _ = account_factory(UserRole.CLUB_ADMIN)
+    event = event_factory(club, club_admin)
+    _, _, admin_headers = account_factory(UserRole.CENTRAL_ADMIN)
+
+    assert client.get('/admin/users', headers=student_headers).status_code == 403
+    users = client.get('/admin/users', headers=admin_headers, params={'role': 'student', 'search': student.email})
+    assert users.status_code == 200
+    assert users.json() == [{
+        'id': student.id,
+        'name': student.name,
+        'email': student.email,
+        'role': 'student',
+        'is_active': True,
+        'created_at': users.json()[0]['created_at'],
+    }]
+    assert 'password_hash' not in users.json()[0]
+    assert client.get(f'/admin/clubs/{club.id}', headers=admin_headers).json()['id'] == club.id
+    assert client.get(f'/admin/events/{event.id}', headers=admin_headers).json()['id'] == event.id
+    assert client.get('/admin/clubs/99999', headers=admin_headers).status_code == 404
+    assert client.get('/admin/events/99999', headers=admin_headers).status_code == 404

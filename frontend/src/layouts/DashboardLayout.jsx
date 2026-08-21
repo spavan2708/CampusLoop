@@ -1,4 +1,4 @@
-import { Bookmark, Building2, CalendarCheck2, CalendarPlus, Compass, House, ListChecks, LogOut, Menu, ShieldCheck, UserPlus, UserRound, X } from 'lucide-react'
+import { Bookmark, Building2, CalendarCheck2, CalendarPlus, Compass, House, ListChecks, LogOut, Menu, ShieldCheck, UserPlus, UserRound, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import Brand from '../components/Brand.jsx'
@@ -29,7 +29,7 @@ function DashboardLayout() {
           <NavLink to="/student/clubs" onClick={() => setMenuOpen(false)}><Building2 /> Clubs</NavLink>
           <NavLink to="/student/profile" onClick={() => setMenuOpen(false)}><UserRound /> Profile</NavLink>
         </nav>}
-        {user.role === 'central_admin' && <nav className={`dashboard-nav ${menuOpen ? 'nav-open' : ''}`} aria-label="Central administration navigation"><NavLink to="/admin" end onClick={() => setMenuOpen(false)}><ShieldCheck /> Moderation</NavLink><NavLink to="/admin/clubs/new" onClick={() => setMenuOpen(false)}><UserPlus /> Create Club Login</NavLink><NavLink to="/admin/profile" onClick={() => setMenuOpen(false)}><UserRound /> Profile</NavLink></nav>}
+        {user.role === 'central_admin' && <nav className={`dashboard-nav ${menuOpen ? 'nav-open' : ''}`} aria-label="Central administration navigation"><NavLink to="/admin" end onClick={() => setMenuOpen(false)}><House /> Dashboard</NavLink><NavLink to="/admin/clubs" onClick={() => setMenuOpen(false)}><Building2 /> Clubs</NavLink><NavLink to="/admin/events" onClick={() => setMenuOpen(false)}><ShieldCheck /> Events</NavLink><NavLink to="/admin/users" onClick={() => setMenuOpen(false)}><Users /> Users</NavLink><NavLink to="/admin/clubs/new" onClick={() => setMenuOpen(false)}><UserPlus /> New Club</NavLink><NavLink to="/admin/profile" onClick={() => setMenuOpen(false)}><UserRound /> Profile</NavLink></nav>}
         {user.role === 'club_admin' && <nav className={`dashboard-nav ${menuOpen ? 'nav-open' : ''}`} aria-label="Organizer navigation">
           <NavLink to="/club" end onClick={() => setMenuOpen(false)}><House /> Dashboard</NavLink>
           <NavLink to="/club/events" onClick={() => setMenuOpen(false)}><ListChecks /> Manage Events</NavLink>

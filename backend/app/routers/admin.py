@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
 
 from ..dependencies import CentralAdminUser, DatabaseSession
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from ..models import ApprovalStatus, Club, ClubAdminMembership, Event, EventReview, EventStatus, NotificationPriority, User, UserRole
 from ..notifications import create_notification, enqueue_domain_event, notify_club, utc_now
-from ..schemas import AdminClubCreateRequest, AdminClubStatusRequest, ClubResponse, EventList, EventResponse, EventReviewResponse, ModerationRequest
+from ..schemas import AdminClubCreateRequest, AdminClubStatusRequest, ClubResponse, EventList, EventResponse, EventReviewResponse, ModerationRequest, UserResponse
 from ..security import hash_password
 from .clubs import slugify
 
@@ -49,6 +50,14 @@ def list_all_clubs(admin: CentralAdminUser, db: DatabaseSession, approval_status
     return query.order_by(Club.created_at.desc()).all()
 
 
+@router.get("/clubs/{club_id}", response_model=ClubResponse)
+def get_club(club_id: int, admin: CentralAdminUser, db: DatabaseSession):
+    club = db.get(Club, club_id)
+    if not club:
+        raise HTTPException(status_code=404, detail="Club not found")
+    return club
+
+
 @router.patch("/clubs/{club_id}/status", response_model=ClubResponse)
 def set_club_status(club_id: int, payload: AdminClubStatusRequest, admin: CentralAdminUser, db: DatabaseSession):
     club = db.get(Club, club_id)
@@ -69,6 +78,33 @@ def list_all_events(admin: CentralAdminUser, db: DatabaseSession, event_status: 
         query = query.filter(Event.status == event_status)
     items = query.order_by(Event.created_at.desc()).all()
     return EventList(items=items, total=len(items))
+
+
+@router.get("/events/{event_id}", response_model=EventResponse)
+def get_event(event_id: int, admin: CentralAdminUser, db: DatabaseSession):
+    event = db.get(Event, event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
+
+
+@router.get("/users", response_model=list[UserResponse])
+def list_users(
+    admin: CentralAdminUser,
+    db: DatabaseSession,
+    role: UserRole | None = None,
+    is_active: bool | None = None,
+    search: str | None = None,
+):
+    query = db.query(User)
+    if role:
+        query = query.filter(User.role == role)
+    if is_active is not None:
+        query = query.filter(User.is_active.is_(is_active))
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query = query.filter(or_(User.name.ilike(term), User.email.ilike(term)))
+    return query.order_by(User.created_at.desc()).all()
 
 
 @router.get("/events/{event_id}/reviews", response_model=list[EventReviewResponse])

@@ -1,1 +1,12 @@
-import { StrictMode } from 'react'; import { createRoot } from 'react-dom/client'; import App from './App.jsx'; import './styles.css'; createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMode>)
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
+import AuthProvider from '../../../frontend/src/context/AuthProvider.jsx'
+import NotificationProvider from '../../../frontend/src/context/NotificationProvider.jsx'
+import ToastProvider from '../../../frontend/src/context/ToastProvider.jsx'
+import NavigationGuardProvider from '../../../frontend/src/context/NavigationGuardProvider.jsx'
+import App from './App.jsx'
+import '../../../frontend/src/index.css'
+import '../../../frontend/src/App.css'
+import './styles.css'
+createRoot(document.getElementById('root')).render(<StrictMode><BrowserRouter><ToastProvider><NavigationGuardProvider><AuthProvider><NotificationProvider><App /></NotificationProvider></AuthProvider></NavigationGuardProvider></ToastProvider></BrowserRouter></StrictMode>)
