@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     jwt_secret: SecretStr = SecretStr("development-only-placeholder")
     jwt_expiry_minutes: int = Field(default=60, gt=0)
     allowed_frontend_origin: str = "http://localhost:5173"
+    cloudinary_cloud_name: str | None = None
+    cloudinary_api_key: str | None = None
+    cloudinary_api_secret: SecretStr | None = None
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -51,6 +54,8 @@ class Settings(BaseSettings):
             secret = self.jwt_secret.get_secret_value().strip()
             if len(secret) < 32 or secret.lower() in DEVELOPMENT_JWT_SECRETS:
                 raise ValueError("A non-development JWT_SECRET is required in production")
+            if not self.cloudinary_cloud_name or not self.cloudinary_api_key or not self.cloudinary_api_secret:
+                raise ValueError("Cloudinary credentials (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET) are required in production")
         return self
 
     @property
@@ -64,6 +69,14 @@ class Settings(BaseSettings):
     @property
     def is_sqlite(self) -> bool:
         return self.database_url.startswith("sqlite:")
+
+    @property
+    def cloudinary_configured(self) -> bool:
+        return all([
+            self.cloudinary_cloud_name,
+            self.cloudinary_api_key,
+            self.cloudinary_api_secret,
+        ])
 
     @property
     def allowed_frontend_origins(self) -> list[str]:
