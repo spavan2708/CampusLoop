@@ -30,7 +30,14 @@ Students can discover events, save favorites, register, and manage notifications
 
 ## 📸 Preview
 
+### Student Portal
 ![CampusLoop Student Portal](docs/screenshots/student-portal.png)
+
+### Club Portal
+![CampusLoop Club Portal](docs/screenshots/club-portal.png)
+
+### Admin Portal
+![CampusLoop Admin Portal](docs/screenshots/admin-portal.png)
 
 ## Technology
 
