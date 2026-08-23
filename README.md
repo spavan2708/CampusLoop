@@ -12,7 +12,11 @@ CampusLoop is a full-stack campus event management platform built for **students
 
 Students can discover events, save favorites, register, and manage notifications. Clubs can create and manage events, while administrators handle approvals, moderation, and platform access.
 
-[Live Student Portal](https://campusloop-student.vercel.app/)
+### Live Demo
+
+- [Student Portal](https://campusloop-student.vercel.app/)
+- [Club Portal](YOUR_CLUB_PORTAL_URL)
+- [Admin Portal](YOUR_ADMIN_PORTAL_URL)
 
 ---
 
