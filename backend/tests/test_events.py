@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from app.models import EventStatus, UserRole
+from app.models import ApprovalStatus, EventStatus, UserRole
 
 def payload(**changes):
     starts = datetime.now(timezone.utc) + timedelta(days=10)
@@ -49,6 +49,21 @@ def test_club_submission_and_admin_publication(client, account_factory):
     assert client.get('/events').json()['total'] == 0
     assert client.post(f'/admin/events/{event_id}/publish', headers=admin, json={}).json()['status'] == 'published'
     assert client.get('/events').json()['total'] == 1
+
+
+def test_public_event_detail_requires_approved_active_club(client, db_session, account_factory, event_factory):
+    owner, club, _ = account_factory(UserRole.CLUB_ADMIN)
+    event = event_factory(club, owner, status=EventStatus.PUBLISHED)
+    assert client.get(f'/events/{event.id}').status_code == 200
+
+    club.is_active = False
+    db_session.commit()
+    assert client.get(f'/events/{event.id}').status_code == 404
+
+    club.is_active = True
+    club.approval_status = ApprovalStatus.PENDING
+    db_session.commit()
+    assert client.get(f'/events/{event.id}').status_code == 404
 
 
 def test_club_ownership_validation_and_review_reason(client, account_factory, event_factory):

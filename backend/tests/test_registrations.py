@@ -1,4 +1,4 @@
-from app.models import EventStatus, UserRole
+from app.models import ApprovalStatus, EventStatus, UserRole
 
 def test_free_registration_duplicate_cancel_and_saved(client, account_factory, event_factory):
     owner,club,_ = account_factory(UserRole.CLUB_ADMIN); _,_,student = account_factory(UserRole.STUDENT); event = event_factory(club, owner)
@@ -28,3 +28,18 @@ def test_role_attendee_ownership_and_closed_events(client, account_factory, even
     assert client.get(f'/registrations/events/{event.id}/attendees', headers=owner_headers).json()['total'] == 1
     draft = event_factory(club, owner, status=EventStatus.DRAFT); assert client.post(f'/registrations/events/{draft.id}', headers=student).status_code == 409
     expired = event_factory(club, owner, deadline_days=-1); assert client.post(f'/registrations/events/{expired.id}', headers=student).status_code == 409
+
+
+def test_registration_requires_approved_active_club(client, db_session, account_factory, event_factory):
+    owner, club, _ = account_factory(UserRole.CLUB_ADMIN)
+    _, _, student = account_factory(UserRole.STUDENT)
+    event = event_factory(club, owner, status=EventStatus.PUBLISHED)
+
+    club.is_active = False
+    db_session.commit()
+    assert client.post(f'/registrations/events/{event.id}', headers=student).status_code == 404
+
+    club.is_active = True
+    club.approval_status = ApprovalStatus.PENDING
+    db_session.commit()
+    assert client.post(f'/registrations/events/{event.id}', headers=student).status_code == 404

@@ -29,6 +29,13 @@ def event_not_found() -> HTTPException:
     )
 
 
+def public_event_query(query: SqlAlchemyQuery) -> SqlAlchemyQuery:
+    return query.filter(
+        Event.status == EventStatus.PUBLISHED,
+        Event.club.has(approval_status=ApprovalStatus.APPROVED, is_active=True),
+    )
+
+
 def admin_club_id(db: DatabaseSession, user_id: int) -> int:
     membership = db.query(ClubAdminMembership).filter(ClubAdminMembership.user_id == user_id).first()
     if not membership or membership.club.approval_status != ApprovalStatus.APPROVED or not membership.club.is_active:
@@ -269,7 +276,7 @@ def list_published_events(
     club: int | None = None,
     sort: str | None = None,
 ):
-    query = db.query(Event).filter(Event.status == EventStatus.PUBLISHED, Event.club.has(approval_status=ApprovalStatus.APPROVED, is_active=True))
+    query = public_event_query(db.query(Event))
     if date is None:
         query = query.filter(Event.event_date >= utc_now_naive())
     query = apply_filters(query, title, category, date, free=free, club_id=club, sort=sort)
@@ -279,14 +286,7 @@ def list_published_events(
 
 @router.get("/{event_id}", response_model=EventResponse)
 def get_published_event(event_id: int, db: DatabaseSession):
-    event = (
-        db.query(Event)
-        .filter(
-            Event.id == event_id,
-            Event.status == EventStatus.PUBLISHED,
-        )
-        .first()
-    )
+    event = public_event_query(db.query(Event).filter(Event.id == event_id)).first()
     if event is None:
         raise event_not_found()
     return event

@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from ..dependencies import ClubAdminUser, DatabaseSession, StudentUser
+from .events import public_event_query
 from ..models import ClubAdminMembership, Event, EventStatus, NotificationPriority, PaymentStatus, Registration, RegistrationStatus, SavedEvent
 from ..notifications import create_notification, enqueue_domain_event, notify_club, utc_now
 from ..schemas import (
@@ -45,12 +46,7 @@ def register_for_event(
         db.rollback()
         db.execute(text("BEGIN IMMEDIATE"))
 
-    event = (
-        db.query(Event)
-        .filter(Event.id == event_id)
-        .with_for_update()
-        .first()
-    )
+    event = db.query(Event).filter(Event.id == event_id).with_for_update().first()
     if event is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -60,6 +56,11 @@ def register_for_event(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Only published events accept registrations",
+        )
+    if public_event_query(db.query(Event).filter(Event.id == event_id)).first() is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found",
         )
     if utc_now_naive() >= event.registration_deadline:
         raise HTTPException(
