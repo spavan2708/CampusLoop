@@ -6,7 +6,7 @@ import EventCard from '../components/EventCard.jsx'
 import LoadingState from '../components/LoadingState.jsx'
 import useAuth from '../context/useAuth.js'
 import useStudentData from '../context/useStudentData.js'
-import { getApiErrorMessage } from '../services/errors.js'
+import { getSavedEvents, saveEvent, unsaveEvent } from '../services/registrations.js'
 import { isPast } from '../utils/events.js'
 
 function StudentDashboard() {
@@ -14,6 +14,27 @@ function StudentDashboard() {
   const { events, registrations, loading, error, refresh } = useStudentData()
   const upcomingEvents = events.filter((event) => !isPast(event.event_date)).slice(0, 3)
   const upcomingRegistrations = registrations.filter((item) => !isPast(item.event.event_date) && item.event.status !== 'cancelled')
+  const [savedEventIds, setSavedEventIds] = useState(new Set())
+  useEffect(() => {
+    getSavedEvents().then((data) => setSavedEventIds(new Set(data.map((item) => item.id)))).catch(() => setSavedEventIds(new Set()))
+  }, [])
+  const upcomingEventIsSaved = (eventId) => savedEventIds.has(eventId)
+  const handleSaveToggle = async (eventId) => {
+    if (savedEventIds.has(eventId)) {
+      await unsaveEvent(eventId)
+    } else {
+      await saveEvent(eventId)
+    }
+    setSavedEventIds((current) => {
+      const next = new Set(current)
+      if (next.has(eventId)) {
+        next.delete(eventId)
+      } else {
+        next.add(eventId)
+      }
+      return next
+    })
+  }
   return (
     <main className="dashboard-main student-page">
       <div className="dashboard-welcome"><span className="dashboard-kicker">Student dashboard</span><h1>Welcome back, {user.name.split(' ')[0]}.</h1><p>Discover what’s happening on campus and keep your plans in one place.</p></div>
@@ -25,7 +46,7 @@ function StudentDashboard() {
       {loading ? <LoadingState message="Loading your campus events…" /> : error ? <ErrorState message={getApiErrorMessage(error, 'Could not load your dashboard.')} onRetry={refresh} /> : (
         <section className="dashboard-section">
           <div className="section-title-row"><div><span className="section-kicker">Coming up</span><h2>Upcoming events</h2></div><Link className="text-link" to="/student/events">Explore all events →</Link></div>
-          {upcomingEvents.length ? <div className="event-grid">{upcomingEvents.map((event) => <EventCard key={event.id} event={event} registered={registrations.some((item) => item.event.id === event.id)} />)}</div> : <EmptyState title="No upcoming events" message="Published campus events will appear here as soon as organizers add them." />}
+          {upcomingEvents.length ? <div className="event-grid">{upcomingEvents.map((event) => <EventCard key={event.id} event={event} registered={registrations.some((item) => item.event.id === event.id)} isSaved={upcomingEventIsSaved(event.id)} onSaveToggle={handleSaveToggle} />)}</div> : <EmptyState title="No upcoming events" message="Published campus events will appear here as soon as organizers add them." />}
         </section>
       )}
     </main>

@@ -16,6 +16,7 @@ function EventsPage() {
   const [allCategories, setAllCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [savedEventIds, setSavedEventIds] = useState(new Set())
 
   useEffect(() => {
     let active = true
@@ -23,16 +24,43 @@ function EventsPage() {
     getEvents(query, controller.signal).then((data) => {
       if (!active) return
       setEvents(data.items)
-      // Set categories from API response if no prior filters; otherwise keep existing categories
       if (!query.title && !query.category && !query.date && !query.free && !query.sort) setAllCategories([...new Set(data.items.map((event) => event.category))].sort())
     }).catch((requestError) => { if (active && requestError.code !== 'ERR_CANCELED') setError(requestError) }).finally(() => { if (active) setLoading(false) })
     return () => { active = false; controller.abort() }
   }, [query])
 
+  useEffect(() => {
+    let active = true
+    const controller = new AbortController()
+    getSavedEvents(controller.signal).then((data) => {
+      if (!active) return
+      const ids = new Set(data.map((item) => item.id))
+      setSavedEventIds(ids)
+    }).catch((requestError) => { if (active && requestError.code !== 'ERR_CANCELED') setError(requestError) }).finally(() => { if (active) setLoading(false) })
+    return () => { active = false; controller.abort() }
+  }, [])
+
   const categories = useMemo(() => allCategories.length ? allCategories : [...new Set(events.map((event) => event.category))].sort(), [allCategories, events])
   function runQuery(nextQuery) { setLoading(true); setError(''); setQuery(nextQuery) }
   function submit(event) { event.preventDefault(); runQuery(filters) }
   function clearFilters() { const empty = { title: '', category: '', date: '', free: '', sort: '' }; setFilters(empty); runQuery(empty) }
+
+  const handleSaveToggle = async (eventId) => {
+    if (savedEventIds.has(eventId)) {
+      await unsaveEvent(eventId)
+    } else {
+      await saveEvent(eventId)
+    }
+    setSavedEventIds((current) => {
+      const next = new Set(current)
+      if (next.has(eventId)) {
+        next.delete(eventId)
+      } else {
+        next.add(eventId)
+      }
+      return next
+    })
+  }
 
   return (
     <main className="dashboard-main student-page">
@@ -46,7 +74,7 @@ function EventsPage() {
         <button className="button button-primary button-small" type="submit"><SlidersHorizontal size={17} /> Apply</button>
         {(query.title || query.category || query.date || query.free || query.sort) && <button className="button button-secondary button-small" type="button" onClick={clearFilters}><X size={16} /> Clear</button>}
       </form>
-      {loading ? <LoadingState message="Finding events…" /> : error ? <ErrorState message={getApiErrorMessage(error, 'Could not load events.')} onRetry={() => runQuery({ ...query })} /> : events.length ? <div className="event-grid event-grid-page">{events.map((event) => <EventCard key={event.id} event={event} registered={registrations.some((item) => item.event.id === event.id)} />)}</div> : <EmptyState title="No events found" message="Try changing or clearing your filters." />}
+      {loading ? <LoadingState message="Finding events…" /> : error ? <ErrorState message={getApiErrorMessage(error, 'Could not load events.')} onRetry={() => runQuery({ ...query })} /> : events.length ? <div className="event-grid event-grid-page">{events.map((event) => <EventCard key={event.id} event={event} registered={registrations.some((item) => item.event.id === event.id)} isSaved={savedEventIds.has(event.id)} onSaveToggle={handleSaveToggle} />)}</div> : <EmptyState title="No events found" message="Try changing or clearing your filters." />}
     </main>
   )
 }
