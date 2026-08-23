@@ -3,12 +3,29 @@ import { Link } from 'react-router-dom'
 import { formatDateTime, getRegistrationState } from '../utils/events.js'
 import { mediaUrl } from '../utils/media'
 
+function PaymentStatusBadge({ paymentStatus }) {
+  const paymentMap = {
+    not_required: 'No payment',
+    pending: 'Payment pending',
+    paid: 'Paid',
+    failed: 'Payment failed',
+    refunded: 'Refunded',
+  }
+  if (!paymentStatus || !(paymentStatus in paymentMap)) return null
+  return (
+    <span className="payment-status-badge">
+      {paymentMap[paymentStatus]}
+    </span>
+  )
+}
+
 function EventCard({
   event,
   registered = false,
   isSaved = false,
   detailsPath,
   onSaveToggle,
+  paymentStatus,
 }) {
   const state = getRegistrationState(event)
   const remaining = Math.max(0, event.capacity - event.registered_count)
@@ -64,6 +81,7 @@ function EventCard({
             )}
           </>
         ) : null}
+        {paymentStatus && <PaymentStatusBadge paymentStatus={paymentStatus} />}
       </div>
     </article>
   )
