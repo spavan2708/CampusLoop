@@ -1,14 +1,26 @@
 # CampusLoop
 
-CampusLoop is a full-stack college event platform for students, approved clubs, and a central campus administrator. The FastAPI API owns authentication, moderation, event ownership, registrations, waitlists, saved events, and notifications. The repository also contains separate Vite entry points for the Student, Club, and Admin portals.
+### Discover. Organize. Connect.
 
-## Features
+CampusLoop is a full-stack campus event management platform built for **students, clubs, and administrators**.
 
-- Student signup, JWT login, session restoration, event discovery, saved events, registrations, cancellation, and notifications
-- Centrally provisioned club accounts, club profiles, draft event creation, moderation, publishing, attendee views, and password changes
-- A single bootstrapped central-admin account for club provisioning and event review
-- Backend-enforced roles, event ownership, deadlines, capacity, duplicate-registration prevention, and CORS
-- Argon2 password hashing, JWT authentication, health checks, and structured notification workflows
+Students can discover events, save favorites, register, and manage notifications. Clubs can create and manage events, while administrators handle approvals, moderation, and platform access.
+
+[Live Student Portal](https://campusloop-student.vercel.app/)
+
+---
+
+## ✨ Highlights
+
+- Separate **Student**, **Club**, and **Admin** portals
+- Secure JWT authentication with role-based access
+- Event discovery, filtering, saved events, and registrations
+- Club approval and event moderation workflows
+- Registration capacity, deadlines, waitlists, and attendee management
+- Notification system with user preferences
+- PostgreSQL production database with Alembic migrations
+- Cloudinary-backed media storage
+- Deployed with **Vercel + Render**
 
 ## Technology
 
@@ -144,9 +156,11 @@ Each app-local `vercel.json` rewrites `/(.*)` to `/index.html`, so React Router 
 8. Put all three final Vercel origins, comma-separated, in backend `ALLOWED_FRONTEND_ORIGIN`.
 9. Redeploy the backend and test login, role isolation, moderation, registration, and logout in every portal.
 
-## Uploaded media limitation
+## Media storage
 
-Local development stores validated image uploads in `backend/uploads`. A normal Render service filesystem is ephemeral, so these files must **not** be considered durable in production and may disappear during deploys, restarts, or instance replacement. `StorageService` provides an interface for a later Cloudinary or S3 implementation, but no external provider or credentials are configured. Before production users rely on posters or club branding, implement durable object storage and return stable public URLs.
+CampusLoop uses **Cloudinary** for durable production storage of club logos, banners, and event media. Uploaded images are validated by the backend before being stored.
+
+Local development can continue to use local storage, while production uses Cloudinary through the application's storage service abstraction.
 
 ## Validation commands
 
