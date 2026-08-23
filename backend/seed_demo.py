@@ -22,7 +22,23 @@ from app.models import (
 from app.notifications import create_notification
 from app.security import hash_password
 
-DEMO_STUDENT_EMAIL = "student@demo.campusloop.invalid"
+DEMO_STUDENT_EMAIL = "student.demo@example.com"
+NEW_EMAILS = {
+    "student": "student.demo@example.com",
+    "nexus": "nexus.demo@example.com",
+    "aperture": "aperture.demo@example.com",
+    "rhythm": "rhythm.demo@example.com",
+    "velocity": "velocity.demo@example.com",
+    "founders": "founders.demo@example.com",
+}
+LEGACY_EMAILS = {
+    "student": "student@demo.campusloop.invalid",
+    "nexus": "nexus@demo.campusloop.invalid",
+    "aperture": "aperture@demo.campusloop.invalid",
+    "rhythm": "rhythm@demo.campusloop.invalid",
+    "velocity": "velocity@demo.campusloop.invalid",
+    "founders": "founders@demo.campusloop.invalid",
+}
 DEMO_ORGANIZER_PASSWORD_ENV = "DEMO_ORGANIZER_PASSWORD"
 DEMO_STUDENT_PASSWORD_ENV = "DEMO_STUDENT_PASSWORD"
 
@@ -32,7 +48,7 @@ CLUBS = [
         "slug": "nexus-tech-society",
         "category": "Technology",
         "description": "A student community for developers, builders and emerging technology enthusiasts.",
-        "email": "nexus@demo.campusloop.invalid",
+        "email": "nexus.demo@example.com",
         "organizer": "Aarav Demo",
         "events": [
             ("HackSprint 2026", "Technology", "Innovation Lab", 120, False, 0, "A fast-paced campus hackathon where student teams turn ideas into working prototypes."),
@@ -44,7 +60,7 @@ CLUBS = [
         "slug": "aperture-collective",
         "category": "Photography",
         "description": "A creative community for photographers, filmmakers and visual storytellers.",
-        "email": "aperture@demo.campusloop.invalid",
+        "email": "aperture.demo@example.com",
         "organizer": "Maya Demo",
         "events": [
             ("Campus Through Your Lens", "Photography", "Main Plaza", 40, False, 0, "A guided photo walk exploring architecture, people and everyday campus stories."),
@@ -56,7 +72,7 @@ CLUBS = [
         "slug": "rhythm-and-roots",
         "category": "Cultural",
         "description": "Bringing campus culture alive through music, dance and performance.",
-        "email": "rhythm@demo.campusloop.invalid",
+        "email": "rhythm.demo@example.com",
         "organizer": "Diya Demo",
         "events": [
             ("Open Mic Night", "Cultural", "Amphitheatre", 180, False, 0, "An evening of music, poetry, comedy and student performances."),
@@ -68,7 +84,7 @@ CLUBS = [
         "slug": "velocity-sports-club",
         "category": "Sports",
         "description": "Community tournaments, fitness events and recreational sports for students.",
-        "email": "velocity@demo.campusloop.invalid",
+        "email": "velocity.demo@example.com",
         "organizer": "Rohan Demo",
         "events": [
             ("Campus Football 5v5", "Sports", "Football Ground", 80, True, 15000, "A fast-paced five-a-side football tournament for student teams."),
@@ -80,7 +96,7 @@ CLUBS = [
         "slug": "founders-circle",
         "category": "Entrepreneurship",
         "description": "A community for students exploring startups, product building and entrepreneurship.",
-        "email": "founders@demo.campusloop.invalid",
+        "email": "founders.demo@example.com",
         "organizer": "Arjun Demo",
         "events": [
             ("Startup Pitch Arena", "Entrepreneurship", "Seminar Hall", 100, False, 0, "Students pitch startup ideas and receive feedback from founders and mentors."),
@@ -94,17 +110,80 @@ def _conflict(message: str) -> ValueError:
     return ValueError(f"Demo seed conflict: {message}")
 
 
+def _find_legacy_key(email: str) -> str | None:
+    """Return the legacy key if email matches a known legacy address, else None."""
+    for key, le in LEGACY_EMAILS.items():
+        if email == le:
+            return key
+    return None
+
+
+def _find_new_key(email: str) -> str | None:
+    """Return the new email key if email matches a known new address, else None."""
+    for key, ne in NEW_EMAILS.items():
+        if email == ne:
+            return key
+    return None
+
+
 def _get_or_create_user(db, *, name: str, email: str, role: UserRole, password: str):
-    user = db.query(User).filter(User.email == email).one_or_none()
-    if user is None:
+    """Get or create a demo user with safe legacy migration.
+
+    Priority:
+    1. If new email already exists -> verify name/role, reuse
+    2. If new email doesn't exist -> check whether any legacy (.invalid) users exist
+       and migrate the one matching this new email's legacy key
+    3. If neither exists -> create new user
+    4. If both new and legacy exist for same identifier -> abort with conflict
+    """
+
+    # Check if a user with the exact new email already exists
+    existing_by_new = db.query(User).filter(User.email == email).one_or_none()
+
+    # Build the legacy key that would correspond to this new email
+    # (e.g., new email student.demo@example.com -> legacy key "student")
+    new_key = _find_new_key(email)
+
+    # Check whether any legacy (.invalid) users exist in the session
+    legacy_users_by_key = {}
+    for le_key, le_email in LEGACY_EMAILS.items():
+        u = db.query(User).filter(User.email == le_email).one_or_none()
+        if u is not None:
+            legacy_users_by_key[le_key] = u
+
+    # Case 1: New email already exists
+    if existing_by_new is not None:
+        if existing_by_new.name != name or existing_by_new.role != role:
+            raise _conflict(f"user {email} is not the expected demo account")
+        existing_by_new.is_active = True
+        return existing_by_new, False  # reused
+
+    # Case 2: New email doesn't exist yet
+    if existing_by_new is None:
+        # If there's a legacy user matching this new email's key
+        if new_key and new_key in legacy_users_by_key:
+            # Migrate that legacy user: change only its email to the new format
+            legacy_user = legacy_users_by_key[new_key]
+            legacy_user.email = email
+            db.flush()
+            legacy_user.is_active = True
+            return legacy_user, True  # migrated (counts as reused)
+
+        # No legacy users matching this key -> create new user normally
         user = User(name=name, email=email, password_hash=hash_password(password), role=role, is_active=True)
         db.add(user)
         db.flush()
-        return user, True
-    if user.name != name or user.role != role:
-        raise _conflict(f"user {email} is not the expected demo account")
-    user.is_active = True
-    return user, False
+        return user, True  # newly created
+
+    # Case 3: Both new and legacy exist for same identifier -> abort with conflict
+    # This happens if somehow both a new and legacy user exist with the same base identifier
+    raise _conflict(
+        f"Both new email {email} and legacy email exist. "
+        "Aborting to prevent duplicate demo users."
+    )
+
+    # Should not reach here, but safety
+    raise _conflict("Unexpected state in _get_or_create_user")
 
 
 def _get_or_create_club(db, spec):
@@ -197,7 +276,9 @@ def seed_demo(db, *, student_password: str, organizer_password: str) -> dict[str
     created_events = 0
     created_memberships = 0
     for spec in CLUBS:
-        organizer, created = _get_or_create_user(db, name=spec["organizer"], email=spec["email"], role=UserRole.CLUB_ADMIN, password=organizer_password)
+        # CLUBS already contain new emails; no .replace() needed
+        organizer_email = spec["email"]
+        organizer, created = _get_or_create_user(db, name=spec["organizer"], email=organizer_email, role=UserRole.CLUB_ADMIN, password=organizer_password)
         created_users += int(created)
         club, created = _get_or_create_club(db, spec)
         created_clubs += int(created)
@@ -265,7 +346,7 @@ def main() -> None:
             raise
     print("CampusLoop demo seed complete")
     print(f"Demo student: {DEMO_STUDENT_EMAIL}")
-    print("Demo organizers: nexus@demo.campusloop.invalid, aperture@demo.campusloop.invalid, rhythm@demo.campusloop.invalid, velocity@demo.campusloop.invalid, founders@demo.campusloop.invalid")
+    print("Demo organizers: nexus.demo@example.com, aperture.demo@example.com, rhythm.demo@example.com, velocity.demo@example.com, founders.demo@example.com")
     print(f"Created: {summary['created_users']} users, {summary['created_clubs']} clubs, {summary['created_events']} events, {summary['created_registrations']} registrations, {summary['created_saved_events']} saved events, {summary['created_notifications']} notifications")
 
 
