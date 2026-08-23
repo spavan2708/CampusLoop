@@ -28,6 +28,10 @@ Students can discover events, save favorites, register, and manage notifications
 - Cloudinary-backed media storage
 - Deployed with **Vercel + Render**
 
+## 📸 Preview
+
+![CampusLoop Student Portal](docs/screenshots/student-portal.png)
+
 ## Technology
 
 - API: FastAPI, SQLAlchemy 2, Pydantic, Alembic, Uvicorn
