@@ -167,7 +167,7 @@ def _get_or_create_user(db, *, name: str, email: str, role: UserRole, password: 
             legacy_user.email = email
             db.flush()
             legacy_user.is_active = True
-            return legacy_user, True  # migrated (counts as reused)
+            return legacy_user, False  # migrated (counts as reused, not newly created)
 
         # No legacy users matching this key -> create new user normally
         user = User(name=name, email=email, password_hash=hash_password(password), role=role, is_active=True)
@@ -198,10 +198,19 @@ def _get_or_create_club(db, spec):
         db.add(club)
         db.flush()
         return club, True
-    expected = (spec["name"], spec["category"], spec["description"], spec["email"])
-    actual = (club.name, club.category, club.description, club.contact_email)
-    if actual != expected:
+    # Check if this is a known legacy demo club with matching other fields
+    # but possibly a legacy contact_email
+    expected_without_email = (spec["name"], spec["category"], spec["description"])
+    actual_without_email = (club.name, club.category, club.description)
+    if actual_without_email != expected_without_email:
         raise _conflict(f"club slug {spec['slug']} belongs to another record")
+    # Club slug and other fields match — it's the same demo club.
+    # Migrate contact_email from legacy to new format if needed.
+    legacy_key = _find_legacy_key(club.contact_email) if club.contact_email else None
+    new_email = NEW_EMAILS.get(legacy_key) if legacy_key else None
+    if new_email and club.contact_email != new_email:
+        club.contact_email = new_email
+        db.flush()
     club.approval_status = ApprovalStatus.APPROVED
     club.is_active = True
     return club, False
