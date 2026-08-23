@@ -8,6 +8,21 @@ import { getApiErrorMessage } from '../services/errors.js'
 import { getEventAttendees } from '../services/registrations.js'
 import { formatDateTime } from '../utils/events.js'
 
+const registrationLabels = {
+  confirmed: 'Confirmed',
+  pending_payment: 'Pending payment',
+  waitlisted: 'Waitlisted',
+  cancelled: 'Cancelled',
+}
+
+const paymentLabels = {
+  not_required: 'No payment',
+  pending: 'Payment pending',
+  paid: 'Paid',
+  failed: 'Payment failed',
+  refunded: 'Refunded',
+}
+
 function AttendeesPage() {
   const { eventId } = useParams()
   const [data, setData] = useState(null)
@@ -24,7 +39,8 @@ function AttendeesPage() {
   function reload() { setLoading(true); setError(''); setRetry((value) => value + 1) }
   if (loading) return <main className="dashboard-main"><LoadingState message="Loading attendees…" /></main>
   if (error) return <main className="dashboard-main"><ErrorState message={getApiErrorMessage(error, 'Could not load attendees.')} onRetry={reload} /></main>
-  return <main className="dashboard-main student-page"><Link className="back-link" to={`/club/events/${eventId}`}><ArrowLeft /> Back to event</Link><div className="page-heading-row"><div className="page-heading"><span className="dashboard-kicker">Attendee management</span><h1>{data.event.title}</h1><p>{data.total} of {data.event.capacity} spots registered.</p></div>{data.total > 0 && <label className="attendee-search search-field"><Search /><span className="sr-only">Search attendees</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or email" /></label>}</div>{data.total === 0 ? <EmptyState title="No attendees yet" message="Registered students will appear here after this event is published." /> : attendees.length ? <div className="attendee-table" role="table" aria-label="Event attendees"><div className="attendee-row attendee-heading" role="row"><span>Student</span><span>Email</span><span>Registered</span></div>{attendees.map((item) => <div className="attendee-row" role="row" key={item.registration_id}><span><UserRound />{item.student.name}</span><span><Mail />{item.student.email}</span><span>{formatDateTime(item.registered_at)}</span></div>)}</div> : <EmptyState title="No matching attendees" message="Try a different name or email address." />}</main>
+  const summary = Object.entries(registrationLabels).map(([value, label]) => `${data.items.filter((item) => item.status === value).length} ${label}`).join(' · ')
+  return <main className="dashboard-main student-page"><Link className="back-link" to={`/club/events/${eventId}`}><ArrowLeft /> Back to event</Link><div className="page-heading-row"><div className="page-heading"><span className="dashboard-kicker">Attendee management</span><h1>{data.event.title}</h1><p>{data.total} registrations · {summary}</p></div>{data.total > 0 && <label className="attendee-search search-field"><Search /><span className="sr-only">Search attendees</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name or email" /></label>}</div>{data.total === 0 ? <EmptyState title="No attendees yet" message="Registered students will appear here after this event is published." /> : attendees.length ? <div className="attendee-table" role="table" aria-label="Event attendees"><div className="attendee-row attendee-heading" role="row"><span>Student</span><span>Email</span><span>Status</span><span>Payment</span><span>Registered</span></div>{attendees.map((item) => <div className="attendee-row" role="row" key={item.registration_id}><span><UserRound />{item.student.name}</span><span><Mail />{item.student.email}</span><span>{registrationLabels[item.status] || item.status}</span><span>{paymentLabels[item.payment_status] || item.payment_status}</span><span>{formatDateTime(item.registered_at)}</span></div>)}</div> : <EmptyState title="No matching attendees" message="Try a different name or email address." />}</main>
 }
 
 export default AttendeesPage
