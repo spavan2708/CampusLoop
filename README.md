@@ -2,6 +2,12 @@
 
 ### Discover. Organize. Connect.
 
+![React](https://img.shields.io/badge/React-19-blue?logo=react)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-green?logo=fastapi)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-blue?logo=postgresql)
+![Vercel](https://img.shields.io/badge/Vercel-Deployed-black?logo=vercel)
+![Render](https://img.shields.io/badge/Render-API-purple?logo=render)
+
 CampusLoop is a full-stack campus event management platform built for **students, clubs, and administrators**.
 
 Students can discover events, save favorites, register, and manage notifications. Clubs can create and manage events, while administrators handle approvals, moderation, and platform access.
