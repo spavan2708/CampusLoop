@@ -147,7 +147,6 @@ def cancel_registration(
             detail="Registration not found",
         )
 
-    response = RegistrationResponse.model_validate(registration)
     released_spot = registration.status in (RegistrationStatus.CONFIRMED, RegistrationStatus.PENDING_PAYMENT)
     registration.status = RegistrationStatus.CANCELLED
     registration.payment_status = PaymentStatus.NOT_REQUIRED
@@ -160,7 +159,8 @@ def cancel_registration(
             promoted.payment_status = PaymentStatus.PENDING if registration.event.is_paid else PaymentStatus.NOT_REQUIRED
             create_notification(db, recipient_user_id=promoted.student_id, notification_type="WAITLIST_PROMOTED", category="registrations", title="You’re off the waitlist", message=f"A place opened for {registration.event.title}. Your registration is now {'pending payment' if registration.event.is_paid else 'confirmed'}.", action_url="/student/registrations", event_id=event_id, club_id=registration.event.club_id, entity_type="registration", entity_id=promoted.id, deduplication_key=f"user:{promoted.student_id}:registration:{promoted.id}:promoted", priority=NotificationPriority.URGENT)
     db.commit()
-    return response
+    db.refresh(registration)
+    return registration
 
 
 @router.get("/me", response_model=RegistrationList)

@@ -7,7 +7,9 @@ def test_free_registration_duplicate_cancel_and_saved(client, account_factory, e
     assert client.post(f'/registrations/events/{event.id}', headers=student).status_code == 409
     assert client.post(f'/registrations/events/{event.id}/save', headers=student).status_code == 201
     assert len(client.get('/registrations/saved', headers=student).json()) == 1
-    assert client.delete(f'/registrations/events/{event.id}', headers=student).status_code == 200
+    cancelled = client.delete(f'/registrations/events/{event.id}', headers=student)
+    assert cancelled.status_code == 200 and cancelled.json()['status'] == 'cancelled'
+    assert client.get('/registrations/me', headers=student).json()['items'][0]['status'] == 'cancelled'
     assert client.delete(f'/registrations/events/{event.id}', headers=student).status_code == 404
 
 def test_waitlist_and_paid_placeholder(client, account_factory, event_factory):

@@ -60,6 +60,34 @@ def test_public_event_detail_requires_approved_active_club(client, db_session, a
     db_session.commit()
     assert client.get(f'/events/{event.id}').status_code == 404
 
+
+def test_admin_cannot_publish_event_after_event_date(client, db_session, account_factory, event_factory):
+    from datetime import datetime, timedelta, timezone
+
+    owner, club, _ = account_factory(UserRole.CLUB_ADMIN)
+    _, _, admin = account_factory(UserRole.CENTRAL_ADMIN)
+    event = event_factory(club, owner, status=EventStatus.APPROVED)
+    event.event_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=1)
+    db_session.commit()
+
+    response = client.post(f'/admin/events/{event.id}/publish', headers=admin, json={})
+    assert response.status_code == 422
+    assert client.get(f'/admin/events/{event.id}', headers=admin).json()['status'] == 'approved'
+
+
+def test_admin_cannot_publish_event_after_registration_deadline(client, db_session, account_factory, event_factory):
+    from datetime import datetime, timedelta, timezone
+
+    owner, club, _ = account_factory(UserRole.CLUB_ADMIN)
+    _, _, admin = account_factory(UserRole.CENTRAL_ADMIN)
+    event = event_factory(club, owner, status=EventStatus.APPROVED)
+    event.registration_deadline = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=1)
+    db_session.commit()
+
+    response = client.post(f'/admin/events/{event.id}/publish', headers=admin, json={})
+    assert response.status_code == 422
+    assert client.get(f'/admin/events/{event.id}', headers=admin).json()['status'] == 'approved'
+
     club.is_active = True
     club.approval_status = ApprovalStatus.PENDING
     db_session.commit()

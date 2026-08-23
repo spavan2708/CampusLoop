@@ -14,6 +14,8 @@ import PortalSavedEventsPage from './pages/SavedEventsPage.jsx'
 import PortalUnauthorizedPage from './pages/UnauthorizedPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
+import ClubsPage from '../../../frontend/src/pages/ClubsPage.jsx'
+import ClubDetailsPage from '../../../frontend/src/pages/ClubDetailsPage.jsx'
 
 const StudentDashboard = lazy(() => import('../../../frontend/src/pages/StudentDashboard.jsx'))
 const EventsPage = lazy(() => import('../../../frontend/src/pages/EventsPage.jsx'))
@@ -36,6 +38,8 @@ function studentRoutes() {
         <Route path="dashboard" element={<StudentDashboard />} />
         <Route path="events" element={<EventsPage />} />
         <Route path="events/:eventId" element={<EventDetailsPage />} />
+        <Route path="clubs" element={<ClubsPage />} />
+        <Route path="clubs/:slug" element={<ClubDetailsPage />} />
         <Route path="registrations" element={<PortalRegistrationsPage />} />
         <Route path="saved" element={<PortalSavedEventsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
@@ -46,6 +50,8 @@ function studentRoutes() {
         <Route path="student" element={<Navigate to="/dashboard" replace />} />
         <Route path="student/events" element={<EventsPage />} />
         <Route path="student/events/:eventId" element={<EventDetailsPage />} />
+        <Route path="student/clubs" element={<ClubsPage />} />
+        <Route path="student/clubs/:slug" element={<ClubDetailsPage />} />
         <Route path="student/registrations" element={<Navigate to="/registrations" replace />} />
         <Route path="student/saved" element={<Navigate to="/saved" replace />} />
         <Route path="student/notifications" element={<Navigate to="/notifications" replace />} />

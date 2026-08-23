@@ -1,4 +1,4 @@
-import { Bookmark, CalendarCheck2, Compass, House, LogOut, Menu, UserRound, X } from 'lucide-react'
+import { Bookmark, Building2, CalendarCheck2, Compass, House, LogOut, Menu, UserRound, X } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import Brand from '../../../../frontend/src/components/Brand.jsx'
@@ -24,6 +24,7 @@ export default function StudentLayout() {
       <nav className={`dashboard-nav ${menuOpen ? 'nav-open' : ''}`} aria-label="Student navigation">
         <NavLink to="/dashboard" end onClick={close}><House /> Dashboard</NavLink>
         <NavLink to="/events" onClick={close}><Compass /> Explore Events</NavLink>
+        <NavLink to="/clubs" onClick={close}><Building2 /> Clubs</NavLink>
         <NavLink to="/registrations" onClick={close}><CalendarCheck2 /> My Registrations</NavLink>
         <NavLink to="/saved" onClick={close}><Bookmark /> Saved</NavLink>
         <NavLink to="/profile" onClick={close}><UserRound /> Profile</NavLink>

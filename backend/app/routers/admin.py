@@ -9,6 +9,7 @@ from ..notifications import create_notification, enqueue_domain_event, notify_cl
 from ..schemas import AdminClubCreateRequest, AdminClubStatusRequest, ClubResponse, EventList, EventResponse, EventReviewResponse, ModerationRequest, UserResponse
 from ..security import hash_password
 from .clubs import slugify
+from .events import validate_event_dates
 
 router = APIRouter(prefix="/admin", tags=["central administration"])
 
@@ -132,6 +133,8 @@ def moderate_event(event_id: int, action: str, payload: ModerationRequest, admin
         raise HTTPException(status_code=409, detail="Event is not pending approval")
     if action == "publish" and event.status != EventStatus.APPROVED:
         raise HTTPException(status_code=409, detail="Only approved events can be published")
+    if action == "publish":
+        validate_event_dates(event.event_date, event.registration_deadline)
     if action in {"reject", "request-changes", "cancel"} and not payload.reason:
         raise HTTPException(status_code=422, detail="A reason is required")
     event.status = transitions[action]

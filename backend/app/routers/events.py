@@ -56,10 +56,16 @@ def get_owned_event(db: DatabaseSession, event_id: int, user_id: int) -> Event:
 
 
 def validate_event_dates(event_date: datetime, registration_deadline: datetime):
-    if event_date <= utc_now_naive():
+    now = utc_now_naive()
+    if event_date <= now:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Event date must be in the future",
+        )
+    if registration_deadline <= now:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Registration deadline must be in the future",
         )
     if registration_deadline >= event_date:
         raise HTTPException(

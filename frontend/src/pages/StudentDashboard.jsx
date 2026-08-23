@@ -6,6 +6,7 @@ import EmptyState from '../components/EmptyState.jsx'
 import ErrorState from '../components/ErrorState.jsx'
 import EventCard from '../components/EventCard.jsx'
 import LoadingState from '../components/LoadingState.jsx'
+import StatusMessage from '../components/StatusMessage.jsx'
 import useAuth from '../context/useAuth.js'
 import useStudentData from '../context/useStudentData.js'
 import { getSavedEvents, saveEvent, unsaveEvent } from '../services/registrations.js'
@@ -17,29 +18,30 @@ function StudentDashboard() {
   const upcomingEvents = events.filter((event) => !isPast(event.event_date)).slice(0, 3)
   const upcomingRegistrations = registrations.filter((item) => !isPast(item.event.event_date) && item.event.status !== 'cancelled')
   const [savedEventIds, setSavedEventIds] = useState(new Set())
+  const [saveError, setSaveError] = useState('')
   useEffect(() => {
-    getSavedEvents().then((data) => setSavedEventIds(new Set(data.map((item) => item.id)))).catch(() => setSavedEventIds(new Set()))
+    getSavedEvents().then((data) => setSavedEventIds(new Set(data.map((item) => item.id)))).catch((requestError) => { setSavedEventIds(new Set()); setSaveError(getApiErrorMessage(requestError, 'Could not load saved events.')) })
   }, [])
   const upcomingEventIsSaved = (eventId) => savedEventIds.has(eventId)
   const handleSaveToggle = async (eventId) => {
-    if (savedEventIds.has(eventId)) {
-      await unsaveEvent(eventId)
-    } else {
-      await saveEvent(eventId)
+    try {
+      if (savedEventIds.has(eventId)) await unsaveEvent(eventId)
+      else await saveEvent(eventId)
+      setSaveError('')
+      setSavedEventIds((current) => {
+        const next = new Set(current)
+        if (next.has(eventId)) next.delete(eventId)
+        else next.add(eventId)
+        return next
+      })
+    } catch (requestError) {
+      setSaveError(getApiErrorMessage(requestError, 'Could not update saved events.'))
     }
-    setSavedEventIds((current) => {
-      const next = new Set(current)
-      if (next.has(eventId)) {
-        next.delete(eventId)
-      } else {
-        next.add(eventId)
-      }
-      return next
-    })
   }
   return (
     <main className="dashboard-main student-page">
       <div className="dashboard-welcome"><span className="dashboard-kicker">Student dashboard</span><h1>Welcome back, {user.name.split(' ')[0]}.</h1><p>Discover what’s happening on campus and keep your plans in one place.</p></div>
+      <StatusMessage type="error">{saveError}</StatusMessage>
       <section className="stat-grid" aria-label="Dashboard summary">
         <article><span className="stat-icon"><Compass /></span><div><strong>{events.length}</strong><span>Published events</span></div></article>
         <article><span className="stat-icon"><TicketCheck /></span><div><strong>{registrations.length}</strong><span>Total registrations</span></div></article>

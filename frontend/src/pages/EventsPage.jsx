@@ -4,6 +4,7 @@ import EmptyState from '../components/EmptyState.jsx'
 import ErrorState from '../components/ErrorState.jsx'
 import EventCard from '../components/EventCard.jsx'
 import LoadingState from '../components/LoadingState.jsx'
+import StatusMessage from '../components/StatusMessage.jsx'
 import useStudentData from '../context/useStudentData.js'
 import { getApiErrorMessage } from '../services/errors.js'
 import { getEvents } from '../services/events.js'
@@ -17,6 +18,7 @@ function EventsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [savedEventIds, setSavedEventIds] = useState(new Set())
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -46,25 +48,25 @@ function EventsPage() {
   function clearFilters() { const empty = { title: '', category: '', date: '', free: '', sort: '' }; setFilters(empty); runQuery(empty) }
 
   const handleSaveToggle = async (eventId) => {
-    if (savedEventIds.has(eventId)) {
-      await unsaveEvent(eventId)
-    } else {
-      await saveEvent(eventId)
+    try {
+      if (savedEventIds.has(eventId)) await unsaveEvent(eventId)
+      else await saveEvent(eventId)
+      setSaveError('')
+      setSavedEventIds((current) => {
+        const next = new Set(current)
+        if (next.has(eventId)) next.delete(eventId)
+        else next.add(eventId)
+        return next
+      })
+    } catch (requestError) {
+      setSaveError(getApiErrorMessage(requestError, 'Could not update saved events.'))
     }
-    setSavedEventIds((current) => {
-      const next = new Set(current)
-      if (next.has(eventId)) {
-        next.delete(eventId)
-      } else {
-        next.add(eventId)
-      }
-      return next
-    })
   }
 
   return (
     <main className="dashboard-main student-page">
       <div className="page-heading"><span className="dashboard-kicker">Explore</span><h1>Find your next campus event</h1><p>Search published events and reserve your spot before registration closes.</p></div>
+      <StatusMessage type="error">{saveError}</StatusMessage>
       <form className="filter-bar" onSubmit={submit} aria-label="Filter events">
         <label className="search-field"><Search size={19} /><span className="sr-only">Search by title</span><input value={filters.title} onChange={(event) => setFilters({ ...filters, title: event.target.value })} placeholder="Search by title" /></label>
         <label><span>Category</span><select value={filters.category} onChange={(event) => setFilters({ ...filters, category: event.target.value })}><option value="">All categories</option>{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
