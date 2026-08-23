@@ -15,8 +15,8 @@ Students can discover events, save favorites, register, and manage notifications
 ### Live Demo
 
 - [Student Portal](https://campusloop-student.vercel.app/)
-- [Club Portal](YOUR_CLUB_PORTAL_URL)
-- [Admin Portal](YOUR_ADMIN_PORTAL_URL)
+- [Club Portal](https://campusloop-club.vercel.app/login)
+- [Admin Portal](https://campusloop-admin.vercel.app/login)
 
 ---
 
