@@ -4,7 +4,7 @@ from ..dependencies import CentralAdminUser, DatabaseSession
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
-from ..models import ApprovalStatus, Club, ClubAdminMembership, Event, EventReview, EventStatus, NotificationPriority, User, UserRole
+from ..models import ApprovalStatus, Club, ClubAdminMembership, Event, Registration, EventReview, EventStatus, Notification, NotificationOutbox, NotificationPriority, SavedEvent, User, UserRole
 from ..notifications import create_notification, enqueue_domain_event, notify_club, utc_now
 from ..schemas import AdminClubCreateRequest, AdminClubStatusRequest, ClubResponse, EventList, EventResponse, EventReviewResponse, ModerationRequest, UserResponse
 from ..security import hash_password
@@ -163,3 +163,81 @@ def toggle_feature(event_id: int, admin: CentralAdminUser, db: DatabaseSession):
         for student in db.query(User).filter(User.role == UserRole.STUDENT, User.is_active.is_(True)).all():
             create_notification(db, recipient_user_id=student.id, notification_type="EVENT_FEATURED", category="discovery", title="Featured campus event", message=f"{event.title} is now featured.", action_url=f"/student/events/{event.id}", event_id=event.id, club_id=event.club_id, deduplication_key=f"user:{student.id}:event:{event.id}:featured")
     db.commit(); db.refresh(event); return event
+
+@router.delete("/clubs/{club_id}", response_model=ClubResponse)
+def delete_club(club_id: int, admin: CentralAdminUser, db: DatabaseSession):
+    club = db.get(Club, club_id)
+    if not club:
+        raise HTTPException(status_code=404, detail="Club not found")
+
+    # Store response data before deletion to avoid expired ORM object issues
+    response_data = ClubResponse(
+        id=club.id,
+        name=club.name,
+        slug=club.slug,
+        description=club.description,
+        logo_url=club.logo_url,
+        banner_url=club.banner_url,
+        category=club.category,
+        contact_email=club.contact_email,
+        faculty_coordinator=club.faculty_coordinator,
+        student_coordinator=club.student_coordinator,
+        approval_status=club.approval_status,
+        rejection_reason=club.rejection_reason,
+        is_active=club.is_active,
+        created_at=club.created_at,
+    )
+
+    # Step 1: Delete EventReview rows for events in this club
+    for event in club.events:
+        db.execute(EventReview.__table__.delete().where(EventReview.__table__.c.event_id == event.id))
+
+    # Step 2: Delete SavedEvent rows for events in this club
+    for event in club.events:
+        db.execute(SavedEvent.__table__.delete().where(SavedEvent.__table__.c.event_id == event.id))
+
+    # Step 3: Delete Notification rows referencing this club or its events
+    db.execute(
+        Notification.__table__.delete().
+        where(
+            (Notification.__table__.c.entity_type == "club") & (Notification.__table__.c.entity_id == club.id)
+        )
+    )
+    for event in club.events:
+        db.execute(
+            Notification.__table__.delete().
+            where(
+                (Notification.__table__.c.entity_type == "event") & (Notification.__table__.c.entity_id == event.id)
+            )
+        )
+
+    # Step 4: Delete NotificationOutbox rows referencing this club's events
+    # Use both aggregate_id AND aggregate_type to prevent ID collisions
+    # between different aggregate types (event vs club vs others)
+    for event in club.events:
+        db.execute(
+            NotificationOutbox.__table__.delete().
+            where(
+                (NotificationOutbox.__table__.c.aggregate_id == event.id)
+                & (NotificationOutbox.__table__.c.aggregate_type == "event")
+            )
+        )
+
+    # Step 4: Delete registrations for events in this club
+    for event in club.events:
+        db.execute(Registration.__table__.delete().where(Registration.event_id == event.id))
+
+    # Step 5: Delete all events in the club
+    event_ids = [event.id for event in club.events]
+    db.execute(Event.__table__.delete().where(Event.id.in_(event_ids)))
+
+    # Step 6: Delete club admin memberships
+    for membership in club.memberships:
+        db.delete(membership)
+
+    # Step 7: Finally delete the club
+    db.delete(club)
+
+    db.commit()
+
+    return response_data
