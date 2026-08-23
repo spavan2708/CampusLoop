@@ -83,6 +83,15 @@ def mark_read(notification_id: int, current_user: CurrentUser, db: DatabaseSessi
     return item
 
 
+@router.patch("/{notification_id}/unread", response_model=NotificationResponse)
+def mark_unread(notification_id: int, current_user: CurrentUser, db: DatabaseSession):
+    item = owned_notification(db, notification_id, current_user.id)
+    item.read_at = None
+    item.status = NotificationStatus.DELIVERED
+    db.commit(); db.refresh(item)
+    return item
+
+
 @router.patch("/read-all", response_model=UnreadCountResponse)
 def mark_all_read(current_user: CurrentUser, db: DatabaseSession):
     timestamp = now_utc()

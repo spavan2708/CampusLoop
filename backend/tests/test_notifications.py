@@ -22,7 +22,11 @@ def test_notification_ownership_read_all_archive_and_pagination(client, db_sessi
     assert client.get('/notifications/unread-count', headers=first_headers).json()['count'] == 2
     assert client.patch(f'/notifications/{item.id}/read', headers=second_headers).status_code == 404
     assert client.patch(f'/notifications/{item.id}/read', headers=first_headers).json()['status'] == 'read'
+    assert client.get('/notifications/unread-count', headers=first_headers).json()['count'] == 1
     assert client.patch('/notifications/read-all', headers=first_headers).json()['count'] == 0
+    assert client.get('/notifications/unread-count', headers=first_headers).json()['count'] == 0
+    assert client.patch(f'/notifications/{item.id}/unread', headers=first_headers).json()['status'] == 'delivered'
+    assert client.get('/notifications/unread-count', headers=first_headers).json()['count'] == 1
     assert client.delete(f'/notifications/{item.id}', headers=first_headers).status_code == 204
 
 
@@ -102,3 +106,25 @@ def test_waitlist_promotion_and_payment_placeholder_notifications(client, db_ses
     pending = db_session.query(Notification).filter_by(recipient_user_id=third.id, type='PAYMENT_PENDING').one()
     assert 'No payment has been collected' in pending.message
     assert db_session.query(Notification).filter(Notification.type == 'PAYMENT_DEADLINE_APPROACHING').count() == 0
+
+
+def test_notification_mark_unread_toggles_read_state(client, db_session, account_factory):
+    """Test that marking a notification unread clears read_at and resets status to DELIVERED."""
+    user, _, headers = account_factory(UserRole.STUDENT)
+    item = add_notice(db_session, user.id)
+    # Initially unread (no read_at)
+    assert item.read_at is None
+    # Mark as read
+    read_response = client.patch(f'/notifications/{item.id}/read', headers=headers)
+    assert read_response.json()['status'] == 'read'
+    assert read_response.json()['read_at'] is not None
+    # Verify unread count decreased
+    unread_response = client.get('/notifications/unread-count', headers=headers)
+    assert unread_response.json()['count'] == 0
+    # Mark as unread
+    unread_response = client.patch(f'/notifications/{item.id}/unread', headers=headers)
+    assert unread_response.json()['status'] == 'delivered'
+    assert unread_response.json()['read_at'] is None
+    # Verify unread count increased back to 1
+    unread_response = client.get('/notifications/unread-count', headers=headers)
+    assert unread_response.json()['count'] == 1
