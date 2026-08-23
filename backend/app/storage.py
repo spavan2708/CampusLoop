@@ -36,15 +36,6 @@ def _asset_details(entity_type: str, entity_id: int, asset_type: str) -> tuple[s
     return f"{CLOUDINARY_BASE_FOLDER}/{folder}", pattern.format(id=entity_id)
 
 
-def _delete_previous_asset(public_id: str) -> None:
-    """Delete any previous Cloudinary asset belonging to this CampusLoop app."""
-    try:
-        cloudinary.uploader.destroy(public_id)
-    except Exception:
-        # Non-fatal: if delete fails, we still proceed with the new upload
-        pass
-
-
 def _validate_image_bytes(content: bytes, content_type: str = None) -> None:
     """Validate that content is a valid image with an allowed format using Pillow; raise if not."""
     if not content:
@@ -110,7 +101,6 @@ class CloudinaryStorageService:
                 raise ValueError("Complete upload asset metadata is required")
             folder, asset_name = _asset_details(entity_type, entity_id, asset_type)
             public_id = f"{folder}/{asset_name}"
-            _delete_previous_asset(public_id)
         else:
             folder = CLOUDINARY_BASE_FOLDER
 

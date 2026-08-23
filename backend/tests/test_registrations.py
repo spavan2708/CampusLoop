@@ -45,3 +45,14 @@ def test_registration_requires_approved_active_club(client, db_session, account_
     club.approval_status = ApprovalStatus.PENDING
     db_session.commit()
     assert client.post(f'/registrations/events/{event.id}', headers=student).status_code == 404
+
+
+def test_saved_events_require_public_club_visibility(client, db_session, account_factory, event_factory):
+    owner, club, _ = account_factory(UserRole.CLUB_ADMIN)
+    _, _, student_headers = account_factory(UserRole.STUDENT)
+    event = event_factory(club, owner, status=EventStatus.PUBLISHED)
+    assert client.post(f'/registrations/events/{event.id}/save', headers=student_headers).status_code == 201
+    club.is_active = False
+    db_session.commit()
+    assert client.get('/registrations/saved', headers=student_headers).json() == []
+    assert client.post(f'/registrations/events/{event.id}/save', headers=student_headers).status_code == 404

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from app.models import ApprovalStatus, EventStatus, UserRole
+from app.models import ApprovalStatus, EventStatus, PaymentStatus, Registration, UserRole
 
 def payload(**changes):
     starts = datetime.now(timezone.utc) + timedelta(days=10)
@@ -59,6 +59,34 @@ def test_public_event_detail_requires_approved_active_club(client, db_session, a
     club.is_active = False
     db_session.commit()
     assert client.get(f'/events/{event.id}').status_code == 404
+
+
+def test_club_events_only_include_upcoming_published_events(client, db_session, account_factory, event_factory):
+    from datetime import datetime, timedelta, timezone
+
+    owner, club, _ = account_factory(UserRole.CLUB_ADMIN)
+    upcoming = event_factory(club, owner, status=EventStatus.PUBLISHED)
+    past = event_factory(club, owner, status=EventStatus.PUBLISHED)
+    past.event_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)
+    db_session.commit()
+
+    response = client.get(f'/clubs/{club.slug}/events')
+    assert response.status_code == 200
+    assert [item['id'] for item in response.json()['items']] == [upcoming.id]
+
+
+def test_organizer_event_cancellation_cancels_registrations(client, db_session, account_factory, event_factory):
+    owner, club, owner_headers = account_factory(UserRole.CLUB_ADMIN)
+    _, _, first_headers = account_factory(UserRole.STUDENT)
+    _, _, second_headers = account_factory(UserRole.STUDENT)
+    event = event_factory(club, owner, capacity=1)
+    assert client.post(f'/registrations/events/{event.id}', headers=first_headers).json()['status'] == 'confirmed'
+    assert client.post(f'/registrations/events/{event.id}', headers=second_headers).json()['status'] == 'waitlisted'
+
+    assert client.post(f'/events/{event.id}/cancel', headers=owner_headers).status_code == 200
+    assert client.get('/registrations/me', headers=first_headers).json()['items'][0]['status'] == 'cancelled'
+    assert client.get('/registrations/me', headers=second_headers).json()['items'][0]['status'] == 'cancelled'
+    assert db_session.query(Registration).filter(Registration.event_id == event.id, Registration.payment_status == PaymentStatus.NOT_REQUIRED).count() == 2
 
 
 def test_admin_cannot_publish_event_after_event_date(client, db_session, account_factory, event_factory):

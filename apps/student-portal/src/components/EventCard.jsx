@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, Users } from 'lucide-react'
+import { Bookmark, CalendarDays, MapPin, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { formatDateTime, getRegistrationState } from '../../../../frontend/src/utils/events.js'
 
@@ -8,7 +8,7 @@ function mediaUrl(path) {
   return `${apiUrl}${path.startsWith('/') ? '' : '/'}${path}`
 }
 
-export default function EventCard({ event, registered = false, detailsPath }) {
+export default function EventCard({ event, registered = false, detailsPath, isSaved = false, onSaveToggle }) {
   const state = getRegistrationState(event)
   const remaining = Math.max(0, event.capacity - event.registered_count)
   const href = detailsPath || `/events/${event.id}`
@@ -27,7 +27,7 @@ export default function EventCard({ event, registered = false, detailsPath }) {
         <div><MapPin /><dt>Venue</dt><dd>{event.venue}</dd></div>
         <div><Users /><dt>Availability</dt><dd>{remaining} of {event.capacity} spots left</dd></div>
       </dl>
-      <div className="event-card-footer"><span>Register by {formatDateTime(event.registration_deadline)}</span><Link className="text-link" to={href}>View details →</Link></div>
+      <div className="event-card-footer"><span>Register by {formatDateTime(event.registration_deadline)}</span><Link className="text-link" to={href}>View details →</Link>{onSaveToggle ? <button type="button" className="button button-outline button-small" aria-label={isSaved ? 'Unsave this event' : 'Save this event'} onClick={() => onSaveToggle(event.id)}><Bookmark /> {isSaved ? 'Saved' : 'Save'}</button> : null}</div>
     </article>
   )
 }

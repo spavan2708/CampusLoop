@@ -210,7 +210,7 @@ def list_event_attendees(
 
 @router.post("/events/{event_id}/save", status_code=status.HTTP_201_CREATED)
 def save_event(event_id: int, student: StudentUser, db: DatabaseSession):
-    event = db.query(Event).filter(Event.id == event_id, Event.status == EventStatus.PUBLISHED).first()
+    event = public_event_query(db.query(Event).filter(Event.id == event_id)).first()
     if not event: raise HTTPException(status_code=404, detail="Event not found")
     if db.query(SavedEvent).filter_by(student_id=student.id, event_id=event_id).first():
         raise HTTPException(status_code=409, detail="Event already saved")
@@ -227,4 +227,7 @@ def unsave_event(event_id: int, student: StudentUser, db: DatabaseSession):
 
 @router.get("/saved", response_model=list[EventResponse])
 def saved_events(student: StudentUser, db: DatabaseSession):
-    return [item.event for item in db.query(SavedEvent).filter_by(student_id=student.id).all()]
+    query = public_event_query(
+        db.query(SavedEvent).join(SavedEvent.event).filter(SavedEvent.student_id == student.id)
+    )
+    return [item.event for item in query.all()]

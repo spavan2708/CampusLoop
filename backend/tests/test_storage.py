@@ -20,10 +20,7 @@ def test_cloudinary_assets_use_distinct_namespaces_and_cleanup(monkeypatch):
         cloudinary_api_secret=SimpleNamespace(get_secret_value=lambda: "test-secret"),
     )
     uploads = []
-    deletions = []
-
     monkeypatch.setattr(storage, "get_settings", lambda: settings)
-    monkeypatch.setattr(storage.cloudinary.uploader, "destroy", lambda public_id: deletions.append(public_id))
     monkeypatch.setattr(
         storage.cloudinary.uploader,
         "upload",
@@ -48,9 +45,26 @@ def test_cloudinary_assets_use_distinct_namespaces_and_cleanup(monkeypatch):
         "event_poster_9",
         "event_banner_9",
     ]
-    assert deletions == [
-        "campusloop/clubs/logos/club_logo_7",
-        "campusloop/clubs/banners/club_banner_7",
-        "campusloop/events/posters/event_poster_9",
-        "campusloop/events/banners/event_banner_9",
-    ]
+
+
+def test_failed_cloudinary_replacement_does_not_delete_existing_asset(monkeypatch):
+    settings = SimpleNamespace(
+        cloudinary_cloud_name="test-cloud",
+        cloudinary_api_key="test-key",
+        cloudinary_api_secret=SimpleNamespace(get_secret_value=lambda: "test-secret"),
+    )
+    uploads = []
+    monkeypatch.setattr(storage, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        storage.cloudinary.uploader,
+        "upload",
+        lambda content, **kwargs: uploads.append(kwargs) or (_ for _ in ()).throw(RuntimeError("upload failed")),
+    )
+
+    service = storage.CloudinaryStorageService()
+    try:
+        service.save_image(image_bytes(), "image/png", entity_type="event", entity_id=9, asset_type="poster")
+        assert False, "Expected the upload to fail"
+    except RuntimeError as exc:
+        assert str(exc) == "upload failed"
+    assert uploads == [{"folder": "campusloop/events/posters", "format": "png", "public_id": "event_poster_9"}]

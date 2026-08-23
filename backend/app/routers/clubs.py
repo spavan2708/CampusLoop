@@ -2,7 +2,7 @@ import re
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from ..dependencies import CentralAdminUser, ClubAdminUser, DatabaseSession
 from ..models import ApprovalStatus, Club, ClubAdminMembership, Event, EventStatus
-from ..schemas import ClubResponse, ClubUpdateRequest, EventList, ModerationRequest
+from ..schemas import ClubResponse, ClubUpdateRequest, EventList, ModerationRequest, utc_now_naive
 from ..storage import storage
 
 router = APIRouter(prefix="/clubs", tags=["clubs"])
@@ -70,7 +70,7 @@ def get_club(slug: str, db: DatabaseSession):
 def get_club_events(slug: str, db: DatabaseSession):
     club = db.query(Club).filter(Club.slug == slug, Club.approval_status == ApprovalStatus.APPROVED, Club.is_active.is_(True)).first()
     if not club: raise HTTPException(status_code=404, detail="Club not found")
-    items = db.query(Event).filter(Event.club_id == club.id, Event.status == EventStatus.PUBLISHED).order_by(Event.event_date).all()
+    items = db.query(Event).filter(Event.club_id == club.id, Event.status == EventStatus.PUBLISHED, Event.event_date >= utc_now_naive()).order_by(Event.event_date).all()
     return EventList(items=items, total=len(items))
 
 

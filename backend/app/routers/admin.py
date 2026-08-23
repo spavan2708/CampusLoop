@@ -9,7 +9,7 @@ from ..notifications import create_notification, enqueue_domain_event, notify_cl
 from ..schemas import AdminClubCreateRequest, AdminClubStatusRequest, ClubResponse, EventList, EventResponse, EventReviewResponse, ModerationRequest, UserResponse
 from ..security import hash_password
 from .clubs import slugify
-from .events import validate_event_dates
+from .events import cancel_event_registrations, validate_event_dates
 
 router = APIRouter(prefix="/admin", tags=["central administration"])
 
@@ -141,6 +141,7 @@ def moderate_event(event_id: int, action: str, payload: ModerationRequest, admin
     event.is_published = action == "publish"
     if action == "cancel":
         event.cancellation_reason = payload.reason
+        cancel_event_registrations(event)
     db.add(EventReview(event_id=event.id, reviewer_id=admin.id, action=action, reason=payload.reason))
     notice_type = {"approve": "EVENT_APPROVED", "reject": "EVENT_REJECTED", "request-changes": "EVENT_CHANGES_REQUESTED", "publish": "EVENT_PUBLISHED", "cancel": "EVENT_CANCELLED_BY_ADMIN"}[action]
     reason = f" Reason: {payload.reason}" if payload.reason else ""

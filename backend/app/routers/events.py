@@ -6,7 +6,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Query as SqlAlchemyQuery
 
 from ..dependencies import CentralAdminUser, ClubAdminUser, DatabaseSession
-from ..models import ApprovalStatus, ClubAdminMembership, Event, EventReview, EventStatus, NotificationPriority, Registration, SavedEvent, User, UserRole
+from ..models import ApprovalStatus, ClubAdminMembership, Event, EventReview, EventStatus, NotificationPriority, PaymentStatus, Registration, RegistrationStatus, SavedEvent, User, UserRole
 from ..models import Club
 from ..notifications import create_notification, enqueue_domain_event, notify_admins, notify_club
 from ..schemas import (
@@ -72,6 +72,13 @@ def validate_event_dates(event_date: datetime, registration_deadline: datetime):
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Registration deadline must be before the event",
         )
+
+
+def cancel_event_registrations(event: Event) -> None:
+    for registration in event.registrations:
+        if registration.status != RegistrationStatus.CANCELLED:
+            registration.status = RegistrationStatus.CANCELLED
+            registration.payment_status = PaymentStatus.NOT_REQUIRED
 
 
 def apply_filters(
@@ -239,6 +246,7 @@ def cancel_event(
     event = get_owned_event(db, event_id, organizer.id)
     event.status = EventStatus.CANCELLED
     event.is_published = False
+    cancel_event_registrations(event)
     enqueue_domain_event(db, "EVENT_CANCELLED", "event", event.id, {"event_id": event.id, "club_id": event.club_id}, f"event:{event.id}:club-cancelled:{utc_now_naive().isoformat()}")
     notify_club(db, event.club_id, notification_type="EVENT_CANCELLED", category="event_updates", title="Event cancelled", message=f"{event.title} has been cancelled.", action_url=f"/club/events/{event.id}", event_id=event.id, entity_type="event", entity_id=event.id, deduplication_key=f"club:{event.club_id}:event:{event.id}:cancelled:{utc_now_naive().isoformat()}", priority=NotificationPriority.URGENT)
     for registration in event.registrations:
