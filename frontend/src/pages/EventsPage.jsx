@@ -8,6 +8,7 @@ import StatusMessage from '../components/StatusMessage.jsx'
 import useStudentData from '../context/useStudentData.js'
 import { getApiErrorMessage } from '../services/errors.js'
 import { getEvents } from '../services/events.js'
+import { getSavedEvents, saveEvent, unsaveEvent } from '../services/registrations.js'
 
 function EventsPage() {
   const { registrations } = useStudentData()
