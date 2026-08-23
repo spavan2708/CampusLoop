@@ -2,11 +2,12 @@ from datetime import date, datetime, time, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Query as SqlAlchemyQuery
 
 from ..dependencies import CentralAdminUser, ClubAdminUser, DatabaseSession
 from ..models import ApprovalStatus, ClubAdminMembership, Event, EventReview, EventStatus, NotificationPriority, Registration, SavedEvent, User, UserRole
+from ..models import Club
 from ..notifications import create_notification, enqueue_domain_event, notify_admins, notify_club
 from ..schemas import (
     EventCreate,
@@ -65,9 +66,26 @@ def apply_filters(
     title: str | None,
     category: str | None,
     event_day: date | None,
+    free: bool | None = None,
+    club_id: int | None = None,
+    sort: str | None = None,
+    club_name: str | None = None,
 ) -> SqlAlchemyQuery:
+    valid_sorts = {"newest", "soonest"}
+    if sort and sort not in valid_sorts:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Invalid sort value. Use 'newest' or 'soonest'",
+        )
     if title:
-        query = query.filter(Event.title.ilike(f"%{title.strip()}%"))
+        query = query.join(Event.club).filter(
+            or_(
+                Event.title.ilike(f"%{title.strip()}%"),
+                Club.name.ilike(f"%{title.strip()}%"),
+            )
+        )
+    if club_name:
+        query = query.join(Event.club).filter(Club.name.ilike(f"%{club_name.strip()}%"))
     if category:
         query = query.filter(func.lower(Event.category) == category.strip().lower())
     if event_day:
@@ -76,6 +94,19 @@ def apply_filters(
             Event.event_date >= day_start,
             Event.event_date < day_start + timedelta(days=1),
         )
+    if free is not None:
+        if free:
+            query = query.filter(Event.is_paid == False)
+        else:
+            query = query.filter(Event.is_paid == True)
+    if club_id is not None:
+        query = query.filter(Event.club_id == club_id)
+    if sort == "newest":
+        query = query.order_by(Event.created_at.desc())
+    elif sort == "soonest":
+        query = query.order_by(Event.event_date.asc())
+    else:
+        query = query.order_by(Event.event_date.asc())
     return query
 
 
@@ -107,11 +138,13 @@ def list_my_events(
     db: DatabaseSession,
     title: str | None = None,
     category: str | None = None,
-    event_day: Annotated[date | None, Query(alias="date")] = None,
+    date: Annotated[date | None, Query(alias="date")] = None,
+    free: bool | None = None,
+    sort: str | None = None,
 ):
     query = db.query(Event).filter(Event.club_id == admin_club_id(db, organizer.id))
-    query = apply_filters(query, title, category, event_day)
-    items = query.order_by(Event.event_date.asc()).all()
+    query = apply_filters(query, title, category, date, free=free, sort=sort)
+    items = query.all()
     return EventList(items=items, total=len(items))
 
 
@@ -231,11 +264,16 @@ def list_published_events(
     db: DatabaseSession,
     title: str | None = None,
     category: str | None = None,
-    event_day: Annotated[date | None, Query(alias="date")] = None,
+    date: Annotated[date | None, Query(alias="date")] = None,
+    free: bool | None = None,
+    club: int | None = None,
+    sort: str | None = None,
 ):
     query = db.query(Event).filter(Event.status == EventStatus.PUBLISHED, Event.club.has(approval_status=ApprovalStatus.APPROVED, is_active=True))
-    query = apply_filters(query, title, category, event_day)
-    items = query.order_by(Event.event_date.asc()).all()
+    if date is None:
+        query = query.filter(Event.event_date >= utc_now_naive())
+    query = apply_filters(query, title, category, date, free=free, club_id=club, sort=sort)
+    items = query.all()
     return EventList(items=items, total=len(items))
 
 

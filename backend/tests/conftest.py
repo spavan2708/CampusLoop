@@ -73,8 +73,9 @@ def account_factory(db_session):
 @pytest.fixture
 def event_factory(db_session):
     from datetime import datetime, timedelta, timezone
-    def create(club, creator, *, status=EventStatus.PUBLISHED, capacity=10, is_paid=False, deadline_days=5):
+    def create(club, creator, *, status=EventStatus.PUBLISHED, capacity=10, is_paid=False, deadline_days=5, category="Technology", entry_fee_paise=None):
         now = datetime.now(timezone.utc).replace(tzinfo=None)
-        event = Event(title="Campus Tech Fest", description="A technology festival for college students.", category="Technology", venue="Main Auditorium", event_date=now + timedelta(days=10), end_date=now + timedelta(days=10, hours=2), registration_deadline=now + timedelta(days=deadline_days), capacity=capacity, club_id=club.id, created_by_id=creator.id, status=status, is_published=status == EventStatus.PUBLISHED, is_paid=is_paid, entry_fee_paise=15000 if is_paid else 0)
+        ef = entry_fee_paise if entry_fee_paise is not None else (15000 if is_paid else 0)
+        event = Event(title="Campus Tech Fest", description="A technology festival for college students.", category=category, venue="Main Auditorium", event_date=now + timedelta(days=10), end_date=now + timedelta(days=10, hours=2), registration_deadline=now + timedelta(days=deadline_days), capacity=capacity, club_id=club.id, created_by_id=creator.id, status=status, is_published=status == EventStatus.PUBLISHED, is_paid=is_paid, entry_fee_paise=ef)
         db_session.add(event); db_session.commit(); db_session.refresh(event); return event
     return create
