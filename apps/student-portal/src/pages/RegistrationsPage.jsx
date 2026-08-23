@@ -25,7 +25,7 @@ function RegistrationMeta({ registration }) {
 
 function Group({ title, items, cancellingId, onCancel }) {
   if (!items.length) return null
-  return <section className="registration-group"><div className="section-title-row"><h2>{title}</h2><span>{items.length} {items.length === 1 ? 'event' : 'events'}</span></div><div className="registration-list">{items.map((item) => <article className="registration-item portal-registration" key={item.id}><div><EventCard event={item.event} registered /><RegistrationMeta registration={item} /></div><button className="button button-danger button-small" type="button" disabled={cancellingId === item.event.id || isPast(item.event.event_date) || item.status === 'cancelled'} onClick={() => onCancel(item.event)}>{cancellingId === item.event.id ? 'Cancelling…' : 'Cancel registration'}</button></article>)}</div></section>
+  return <section className="registration-group"><div className="section-title-row"><h2>{title}</h2><span>{items.length} {items.length === 1 ? 'event' : 'events'}</span></div><div className="registration-list">{items.map((item) => <article className="registration-item portal-registration" key={item.id}><div><EventCard event={item.event} registered /><RegistrationMeta registration={item} /></div><button className="button button-danger button-small" type="button" disabled={cancellingId === item.event.id || isPast(item.event.event_date) || item.event.status === 'completed' || item.status === 'cancelled'} onClick={() => onCancel(item.event)}>{cancellingId === item.event.id ? 'Cancelling…' : 'Cancel registration'}</button></article>)}</div></section>
 }
 
 export default function RegistrationsPage() {
@@ -33,8 +33,8 @@ export default function RegistrationsPage() {
   const [cancellingId, setCancellingId] = useState(null)
   const [message, setMessage] = useState(null)
   const [pendingCancel, setPendingCancel] = useState(null)
-  const upcoming = registrations.filter((item) => !isPast(item.event.event_date) && item.event.status !== 'cancelled' && item.status !== 'cancelled')
-  const past = registrations.filter((item) => isPast(item.event.event_date) || item.event.status === 'cancelled' || item.status === 'cancelled')
+  const upcoming = registrations.filter((item) => !isPast(item.event.event_date) && item.event.status !== 'completed' && item.event.status !== 'cancelled' && item.status !== 'cancelled')
+  const past = registrations.filter((item) => isPast(item.event.event_date) || item.event.status === 'completed' || item.event.status === 'cancelled' || item.status === 'cancelled')
 
   async function confirmCancel() {
     const event = pendingCancel

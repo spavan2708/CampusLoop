@@ -42,24 +42,20 @@ def update_my_club(payload: ClubUpdateRequest, user: ClubAdminUser, db: Database
 @router.post("/me/logo", response_model=ClubResponse)
 async def upload_club_logo(user: ClubAdminUser, db: DatabaseSession, image: UploadFile = File(...)):
     club = current_club(user, db)
-    storage.set_upload_context("club", club.id)
     try:
-        club.logo_url = storage.save_image(await image.read(), image.content_type or "")
+        club.logo_url = storage.save_image(await image.read(), image.content_type or "", entity_type="club", entity_id=club.id, asset_type="logo")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    storage.clear_upload_context()
     db.commit(); db.refresh(club); return club
 
 
 @router.post("/me/banner", response_model=ClubResponse)
 async def upload_club_banner(user: ClubAdminUser, db: DatabaseSession, image: UploadFile = File(...)):
     club = current_club(user, db)
-    storage.set_upload_context("club", club.id)
     try:
-        club.banner_url = storage.save_image(await image.read(), image.content_type or "")
+        club.banner_url = storage.save_image(await image.read(), image.content_type or "", entity_type="club", entity_id=club.id, asset_type="banner")
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    storage.clear_upload_context()
     db.commit(); db.refresh(club); return club
 
 

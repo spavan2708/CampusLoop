@@ -165,6 +165,8 @@ def expire_obsolete(db: Session, now: datetime | None = None) -> int:
 
 def process_outbox(db: Session, now: datetime | None = None, limit: int = 100, handler=None) -> int:
     """Process durable domain events with bounded exponential retry metadata."""
+    if handler is None:
+        raise RuntimeError("An outbox handler is required to process domain events")
     now = now or utc_now()
     items = db.query(NotificationOutbox).filter(
         NotificationOutbox.status.in_(["pending", "retry"]),
@@ -182,8 +184,7 @@ def process_outbox(db: Session, now: datetime | None = None, limit: int = 100, h
         item.locked_at = now
         item.attempts += 1
         try:
-            if handler:
-                handler(item)
+            handler(item)
             item.status = "processed"
             item.processed_at = now
             item.last_error = None

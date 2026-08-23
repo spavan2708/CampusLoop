@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+import pytest
+
 from app.models import EventStatus, Notification, NotificationOutbox, NotificationStatus, SavedEvent, UserRole
 from app.notification_jobs import deliver_due, expire_obsolete, generate_reminders, process_outbox
 from app.notifications import create_notification, enqueue_domain_event, safe_action_url, utc_now
@@ -60,11 +62,14 @@ def test_digest_generation_and_outbox_retry(client, db_session, account_factory)
 
     enqueue_domain_event(db_session, 'TEST_EVENT', 'test', user.id, {}, 'outbox:test')
     db_session.commit()
-    assert process_outbox(db_session, handler=lambda _item: (_ for _ in ()).throw(RuntimeError('temporary failure'))) == 0
+    with pytest.raises(RuntimeError, match='outbox handler is required'):
+        process_outbox(db_session)
     outbox = db_session.query(NotificationOutbox).filter_by(deduplication_key='outbox:test').one()
+    assert outbox.status == 'pending' and outbox.attempts == 0
+    assert process_outbox(db_session, handler=lambda _item: (_ for _ in ()).throw(RuntimeError('temporary failure'))) == 0
     assert outbox.status == 'retry' and outbox.attempts == 1 and outbox.last_error == 'temporary failure'
     outbox.available_at = utc_now() - timedelta(seconds=1); db_session.commit()
-    assert process_outbox(db_session) == 1
+    assert process_outbox(db_session, handler=lambda _item: None) == 1
     assert outbox.status == 'processed' and outbox.attempts == 2
 
 

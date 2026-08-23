@@ -20,46 +20,24 @@ CLUB_BANNERS_FOLDER = "clubs/banners"
 EVENT_POSTERS_FOLDER = "events/posters"
 EVENT_BANNERS_FOLDER = "events/banners"
 
-# Deterministic public ID patterns
-CLUB_LOG_PUBLIC_ID_PATTERN = "club_{id}"
-EVENT_POSTER_PUBLIC_ID_PATTERN = "event_{id}"
-
-
-# Upload context for replacement cleanup (set by routes before calling save_image)
-_upload_context = {
-    "entity_type": None,  # "club" or "event"
-    "entity_id": None,    # int database ID
+ASSET_CONFIG = {
+    ("club", "logo"): (CLUB_LOGOS_FOLDER, "club_logo_{id}"),
+    ("club", "banner"): (CLUB_BANNERS_FOLDER, "club_banner_{id}"),
+    ("event", "poster"): (EVENT_POSTERS_FOLDER, "event_poster_{id}"),
+    ("event", "banner"): (EVENT_BANNERS_FOLDER, "event_banner_{id}"),
 }
 
 
-def set_upload_context(entity_type: str, entity_id: int) -> None:
-    """Set the upload context so CloudinaryStorageService can cleanup previous assets."""
-    _upload_context["entity_type"] = entity_type
-    _upload_context["entity_id"] = entity_id
+def _asset_details(entity_type: str, entity_id: int, asset_type: str) -> tuple[str, str]:
+    try:
+        folder, pattern = ASSET_CONFIG[(entity_type, asset_type)]
+    except KeyError as exc:
+        raise ValueError("Unsupported upload asset type") from exc
+    return f"{CLOUDINARY_BASE_FOLDER}/{folder}", pattern.format(id=entity_id)
 
 
-def clear_upload_context() -> None:
-    """Clear the upload context after an upload cycle."""
-    _upload_context["entity_type"] = None
-    _upload_context["entity_id"] = None
-
-
-def _generate_public_id(entity_type: str, entity_id: int) -> str:
-    """Generate a deterministic public ID for the given entity."""
-    if entity_type == "club":
-        return CLUB_LOG_PUBLIC_ID_PATTERN.format(id=entity_id)
-    if entity_type == "event":
-        return EVENT_POSTER_PUBLIC_ID_PATTERN.format(id=entity_id)
-    return f"{entity_type}_{entity_id}"
-
-
-def _delete_previous_asset() -> None:
+def _delete_previous_asset(public_id: str) -> None:
     """Delete any previous Cloudinary asset belonging to this CampusLoop app."""
-    entity_type = _upload_context["entity_type"]
-    entity_id = _upload_context["entity_id"]
-    if entity_type is None or entity_id is None:
-        return
-    public_id = _generate_public_id(entity_type, entity_id)
     try:
         cloudinary.uploader.destroy(public_id)
     except Exception:
@@ -91,13 +69,13 @@ def _validate_image_bytes(content: bytes, content_type: str = None) -> None:
 class StorageService(Protocol):
     """Interface for local development and future durable object storage."""
 
-    def save_image(self, content: bytes, content_type: str) -> str: ...
+    def save_image(self, content: bytes, content_type: str, *, entity_type: str | None = None, entity_id: int | None = None, asset_type: str | None = None) -> str: ...
 
 
 class LocalStorageService:
     """Development storage; local filesystem for debugging."""
 
-    def save_image(self, content: bytes, content_type: str) -> str:
+    def save_image(self, content: bytes, content_type: str, *, entity_type: str | None = None, entity_id: int | None = None, asset_type: str | None = None) -> str:
         _validate_image_bytes(content, content_type)
         if content_type not in ALLOWED_IMAGE_TYPES:
             raise ValueError("Only JPEG, PNG, and WebP images are accepted")
@@ -112,7 +90,7 @@ class LocalStorageService:
 class CloudinaryStorageService:
     """Production storage; uploads to Cloudinary."""
 
-    def save_image(self, content: bytes, content_type: str) -> str:
+    def save_image(self, content: bytes, content_type: str, *, entity_type: str | None = None, entity_id: int | None = None, asset_type: str | None = None) -> str:
         _validate_image_bytes(content, content_type)
         if content_type not in ALLOWED_IMAGE_TYPES:
             raise ValueError("Only JPEG, PNG, and WebP images are accepted")
@@ -126,23 +104,15 @@ class CloudinaryStorageService:
             api_secret=settings.cloudinary_api_secret.get_secret_value(),
         )
 
-        # Determine folder and public ID based on upload context
-        entity_type = _upload_context["entity_type"]
-        entity_id = _upload_context["entity_id"]
-
-        if entity_type == "club":
-            folder = f"{CLOUDINARY_BASE_FOLDER}/{CLUB_LOGOS_FOLDER}"
-            public_id = _generate_public_id("club", entity_id)
-        elif entity_type == "event":
-            folder = f"{CLOUDINARY_BASE_FOLDER}/{EVENT_POSTERS_FOLDER}"
-            public_id = _generate_public_id("event", entity_id)
+        public_id = None
+        if entity_type is not None or entity_id is not None or asset_type is not None:
+            if entity_type is None or entity_id is None or asset_type is None:
+                raise ValueError("Complete upload asset metadata is required")
+            folder, asset_name = _asset_details(entity_type, entity_id, asset_type)
+            public_id = f"{folder}/{asset_name}"
+            _delete_previous_asset(public_id)
         else:
             folder = CLOUDINARY_BASE_FOLDER
-            public_id = None
-
-        # Replace: delete previous CampusLoop asset if context is set
-        if entity_type is not None and entity_id is not None:
-            _delete_previous_asset()
 
         ext = ALLOWED_IMAGE_TYPES[content_type]
         upload_kwargs = {
@@ -150,7 +120,7 @@ class CloudinaryStorageService:
             "format": ext.lstrip("."),
         }
         if public_id is not None:
-            upload_kwargs["public_id"] = public_id
+            upload_kwargs["public_id"] = public_id.rsplit("/", 1)[-1]
 
         result = cloudinary.uploader.upload(
             io.BytesIO(content),
